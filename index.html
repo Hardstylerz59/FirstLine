@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rescue Manager</title>
+
+    <!-- Feuilles de style principales -->
+    <link href="main.css" rel="stylesheet" />
+    <link
+      href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css"
+      rel="stylesheet"
+    />
+
+    <!-- Librairies JS externes -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  </head>
+
+  <body>
+    <!-- ========== CONNEXION & INSCRIPTION ========== -->
+    <div id="auth-box" class="auth-container">
+      <!-- Formulaire de connexion -->
+      <div id="login-form">
+        <h3>🔐 Connexion joueur</h3>
+        <input type="email" id="email" placeholder="Email" />
+        <input type="password" id="password" placeholder="Mot de passe" />
+        <button onclick="signIn()">Se connecter</button>
+        <p>
+          Pas encore inscrit ?
+          <a href="#" onclick="showSignUp()">Créer un compte</a>
+        </p>
+      </div>
+
+      <!-- Formulaire d'inscription -->
+      <div id="signup-form" class="hidden">
+        <h3>📝 Créer un compte</h3>
+        <input type="text" id="signup-pseudo" placeholder="Pseudo" />
+        <input type="email" id="signup-email" placeholder="Email" />
+        <input
+          type="password"
+          id="signup-password"
+          placeholder="Mot de passe"
+        />
+        <button onclick="signUp()">S'inscrire</button>
+        <p>
+          Déjà inscrit ?
+          <a href="#" onclick="showSignIn()">Connexion</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- ========== INTERFACE DE JEU PRINCIPALE ========== -->
+    <div id="game-ui" style="display: none">
+      <!-- Barre supérieure avec stats du joueur et boutons -->
+      <div id="top-bar">
+        <div id="player-info-container">
+          <span id="player-info">XP: 0 | Niveau: 1 | Argent: 0€</span>
+          <div id="xp-bar"><div id="xp-bar-fill"></div></div>
+        </div>
+
+        <!-- Boutons d'action rapide -->
+        <button id="save-btn">💾 Sauvegarder</button>
+        <button class="danger" onclick="resetAllVehiclesToCaserne()">
+          🧹 Réinitialiser véhicules
+        </button>
+        <button class="warning" onclick="clearAllVehicleMarkers()">
+          ❌ Effacer marqueurs véhicules
+        </button>
+        <button id="xp-details-btn">📈 Détails XP</button>
+        <button id="add-money-btn">💸 +1M€</button>
+        <button id="clear-missions-btn">
+          ❌ Supprimer toutes les missions
+        </button>
+        <button onclick="signOut()" class="danger">🚪 Se déconnecter</button>
+
+        <!-- Affichage email utilisateur connecté -->
+        <div id="user-email-display"></div>
+      </div>
+
+      <!-- Contenu principal du jeu -->
+      <!-- Contenu principal du jeu -->
+      <div id="game-container">
+        <!-- Panneau Interventions + Log Radio (gauche) -->
+        <div id="interventions-container">
+          <button id="toggle-interventions">⬅️ Fermer</button>
+
+          <div id="missions-panel">
+            <h2>Interventions</h2>
+            <div id="history-button-wrapper">
+              <button onclick="openHistory()">📜 Voir l'historique</button>
+            </div>
+
+            <div id="missions-main">
+              <div id="missions-list-wrapper">
+                <ul id="mission-list"></ul>
+              </div>
+
+              <!-- Log radio en temps réel -->
+              <div id="radio-log-panel" class="radio-log-panel">
+                <div class="radio-log-header">
+                  <h3>📻 Log Radio</h3>
+                </div>
+                <ul id="radio-log-list"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panneau central (carte Leaflet) -->
+        <div id="map-container">
+          <div id="map-panel">
+            <div id="map"></div>
+
+            <!-- Bouton flottant pour ajout de bâtiment -->
+            <button id="add-building-fab" title="Ajouter un bâtiment">
+              <svg width="30" height="30" viewBox="0 0 20 20" fill="none">
+                <rect x="9" y="3" width="2" height="14" fill="white" />
+                <rect x="3" y="9" width="14" height="2" fill="white" />
+              </svg>
+            </button>
+
+            <div id="map-notice" class="hidden">
+              <span id="map-notice-text"
+                >🧱 Cliquez sur la carte pour placer</span
+              >
+              <button id="cancel-placement-btn">Annuler</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panneau Bâtiments (droite) -->
+        <div id="buildings-container">
+          <button id="toggle-buildings">Fermer ➡️</button>
+
+          <div id="buildings-panel">
+            <div id="buildings-header">
+              <div id="building-tools">
+                <div id="building-filter">
+                  <button onclick="filterBuildings('all')">Tous</button>
+                  <button onclick="filterBuildings('caserne')">Caserne</button>
+                  <button onclick="filterBuildings('hopital')">Hôpitaux</button>
+                  <button onclick="filterBuildings('police')">
+                    Commissariats
+                  </button>
+                </div>
+
+                <button id="toggle-all-vehicles-btn">
+                  <svg width="22" height="22" viewBox="0 0 20 20">
+                    <path
+                      d="M6 8l4-4 4 4M6 12l4 4 4-4"
+                      stroke="#333"
+                      stroke-width="2"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                </button>
+
+                <input
+                  type="text"
+                  id="building-search"
+                  placeholder="🔍 Rechercher..."
+                />
+              </div>
+            </div>
+            <ul id="building-list"></ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== MODALES ========== -->
+
+      <!-- Modale tableau de bord des véhicules -->
+      <div id="vehicle-board-modal" class="modal hidden">
+        <div class="modal-content">
+          <h2>Tableau de bord des véhicules</h2>
+          <ul id="vehicle-board-list"></ul>
+          <button onclick="closeVehicleBoardModal()">Fermer</button>
+        </div>
+      </div>
+
+      <!-- Modale infos véhicule -->
+      <div id="vehicle-dashboard-modal" class="modal hidden">
+        <div class="modal-content">
+          <h2 id="veh-title"></h2>
+          <p id="veh-stats"></p>
+          <p id="veh-missions"></p>
+          <p id="veh-wear"></p>
+          <button id="veh-maintenance-btn">Envoyer en Maintenance</button>
+          <button id="veh-delete-btn">Supprimer le véhicule</button>
+          <button onclick="closeVehicleDashboard()">Fermer</button>
+        </div>
+      </div>
+
+      <!-- Modale ajout bâtiment -->
+      <div class="hidden modal-overlay" id="modal">
+        <div class="modal-content">
+          <h3>Ajouter un bâtiment</h3>
+          <label
+            >Type:
+            <select id="building-type">
+              <option value="cpi">CPI - Centre de Première Intervention</option>
+              <option value="cs">CS - Centre de Secours</option>
+              <option value="csp">CSP - Centre de Secours Principal</option>
+              <option value="hopital">Hôpital</option>
+              <option value="police">Police</option>
+            </select>
+          </label>
+          <label
+            >Nom:
+            <input id="building-name" type="text" />
+          </label>
+          <p id="building-cost-display">Coût : 0€</p>
+          <button id="confirm-add-building">Valider</button>
+          <button id="cancel-add-building">Annuler</button>
+        </div>
+      </div>
+
+      <!-- Modale historique -->
+      <div id="history-modal" class="hidden modal-overlay">
+        <div class="modal-content">
+          <h3>Historique des interventions</h3>
+          <ul id="history-list" class="history-list"></ul>
+          <button onclick="clearHistory()">🗑️ Vider</button>
+          <button onclick="closeHistory()">Fermer</button>
+        </div>
+      </div>
+
+      <!-- Modale détails XP -->
+      <div id="xp-modal" class="hidden modal-overlay">
+        <div class="modal-content">
+          <h3>Détails de l'expérience</h3>
+          <p id="xp-current"></p>
+          <p id="xp-next"></p>
+          <p id="xp-progress"></p>
+          <p id="xp-reward"></p>
+          <button onclick="closeXpModal()">Fermer</button>
+        </div>
+      </div>
+
+      <!-- Modale Prise d’appel -->
+      <div id="call-modal" class="hidden modal-overlay">
+        <div class="modal-content large-modal">
+          <h2>📞 Prise d'appel</h2>
+          <div id="call-dialogue" class="call-dialogue"></div>
+          <button id="reveal-address-btn" onclick="handleRevealAddress()">
+            📍 Demander l’adresse
+          </button>
+          <p id="call-address" class="hidden"></p>
+
+          <div id="depart-type-section" class="hidden">
+            <label><strong>Choisissez un départ type :</strong></label>
+            <div id="step-1-services" class="depart-buttons"></div>
+            <div id="step-2-categories" class="depart-buttons hidden"></div>
+            <div id="step-3-missions" class="depart-buttons hidden"></div>
+            <div id="step-4-submissions" class="depart-buttons hidden"></div>
+            <div id="depart-back-button" class="depart-back hidden">
+              <button onclick="handleDepartBack()">⬅ Retour</button>
+            </div>
+          </div>
+
+          <div
+            id="vehicle-selection-section"
+            class="hidden vehicle-selection-context"
+          >
+            <h4>Véhicules disponibles</h4>
+            <div id="vehicle-list"></div>
+          </div>
+
+          <button id="launch-mission-btn" class="hidden">
+            🚨 Déclencher l'intervention
+          </button>
+          <button onclick="closeCallModal()">Annuler</button>
+        </div>
+      </div>
+
+      <!-- Modale Mission en cours -->
+      <div id="manage-modal" class="hidden modal-overlay">
+        <div class="modal-content large-modal">
+          <h2>🚨 Mission en cours</h2>
+          <div id="manage-content"></div>
+          <button onclick="closeManageModal()">Fermer</button>
+        </div>
+      </div>
+
+      <!-- Modale renforts -->
+      <div id="reinforcement-modal" class="hidden modal-overlay">
+        <div class="modal-content large-modal reinforcement-selection-context">
+          <h3>🚒 Ajouter des renforts</h3>
+          <div id="reinforcement-vehicles"></div>
+          <button id="send-reinforcements-btn">✅ Envoyer renforts</button>
+          <button onclick="closeReinforcementModal()">Annuler</button>
+        </div>
+      </div>
+
+      <!-- Modale gestion bâtiment -->
+      <div id="building-modal" class="modal hidden modal-overlay">
+        <div class="modal-content scrollable" id="building-modal-content"></div>
+      </div>
+
+      <!-- Modale gestion hôpital -->
+      <div id="hospital-modal" class="hidden modal-overlay">
+        <div class="modal-content large-modal">
+          <h2>🏥 Gestion de l'hôpital</h2>
+          <div id="hospital-name"></div>
+          <ul id="hospital-patient-list" class="patient-list"></ul>
+          <button onclick="closeHospitalModal()">Fermer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== SCRIPTS ========== -->
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
+
+    <!-- Modules internes -->
+    <script src="utils.js" defer></script>
+    <script src="map.js" defer></script>
+    <script src="buildings.js" defer></script>
+    <script src="missionTypes.js" defer></script>
+    <script src="missions.js" defer></script>
+    <script src="ui.js" defer></script>
+    <script src="save.js" defer></script>
+  </body>
+</html>
