@@ -1205,3 +1205,31 @@ function generateMissionPopupContent(mission) {
   wrapper.appendChild(btn);
   return wrapper;
 }
+
+let isBlinkOn = false;
+
+setInterval(() => {
+  isBlinkOn = !isBlinkOn;
+
+  document.querySelectorAll(".status.selected-synced").forEach((el) => {
+    if (el.classList.contains("dc")) {
+      // Clignotement pour DC : vert ↔ blanc
+      if (isBlinkOn) {
+        el.style.backgroundColor = "green";
+        el.style.color = "white";
+      } else {
+        el.style.backgroundColor = "white";
+        el.style.color = "green";
+      }
+    } else if (el.classList.contains("ot")) {
+      // Clignotement pour OT : bleu ↔ blanc
+      if (isBlinkOn) {
+        el.style.backgroundColor = "blue";
+        el.style.color = "white";
+      } else {
+        el.style.backgroundColor = "white";
+        el.style.color = "blue";
+      }
+    }
+  });
+}, 700);

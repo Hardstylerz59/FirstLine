@@ -412,6 +412,14 @@ function buildVehicleListForCall(autoSelect = true) {
   `;
       section.appendChild(row);
 
+      const statusSpan = row.querySelector(".status");
+
+      if (isChecked) {
+        statusSpan.classList.add("selected-synced");
+      } else {
+        statusSpan.classList.remove("selected-synced", "on", "off");
+      }
+
       if (isChecked) {
         setTimeout(() => {
           row
@@ -439,7 +447,7 @@ function setupPersonnelCountListeners() {
   document
     .querySelectorAll("#vehicle-list input[type=checkbox]")
     .forEach((cb) => {
-      cb.addEventListener("change", (e) => {
+      cb.addEventListener("change", () => {
         const bid = cb.dataset.buildingId;
         const staff = parseInt(cb.dataset.staff || "1", 10);
         const span = document.querySelector(
@@ -452,16 +460,18 @@ function setupPersonnelCountListeners() {
           `input[data-building-id="${bid}"]`
         );
         let used = 0;
+
         inputs.forEach((i) => {
           if (i.checked && i !== cb) {
             used += parseInt(i.dataset.staff || "1", 10);
           }
         });
 
+        const row = cb.closest(".vehicle-select-row");
+        const status = row?.querySelector(".status");
+
         if (cb.checked) {
-          // Tentative d'activation
           if (used + staff > base) {
-            // Trop de personnel requis : on bloque
             cb.checked = false;
             cb.title = "Pas assez de personnel disponible pour ce véhicule.";
             return;
@@ -470,16 +480,18 @@ function setupPersonnelCountListeners() {
           used += staff;
         }
 
+        if (!cb.checked && status) {
+          status.classList.remove("selected-synced");
+          status.style.backgroundColor = "";
+          status.style.color = "";
+        }
+
         const dispo = base - used;
         span.textContent = dispo;
 
         const header = span.closest(".building-header");
         if (header) {
-          if (dispo <= 0) {
-            header.classList.add("no-staff");
-          } else {
-            header.classList.remove("no-staff");
-          }
+          header.classList.toggle("no-staff", dispo <= 0);
         }
       });
     });
@@ -508,7 +520,19 @@ function refreshVehicleStatusAndDistance() {
     // Status
     const statusSpan = row.querySelector(".status");
     if (statusSpan) {
-      statusSpan.className = `status ${vehicle.status}`;
+      const isSelected = row.querySelector("input[type=checkbox]")?.checked;
+
+      // On remet uniquement les classes qu'on veut garder
+      statusSpan.classList.remove("on", "off");
+      statusSpan.classList.toggle("selected-synced", isSelected);
+
+      // On gère indépendamment le status class
+      const statusClass = `status ${vehicle.status}`;
+      if (!statusSpan.classList.contains(vehicle.status)) {
+        statusSpan.className =
+          statusClass + (isSelected ? " selected-synced" : "");
+      }
+
       statusSpan.textContent = vehicle.status.toUpperCase();
     }
   });
@@ -2430,7 +2454,7 @@ document.getElementById("toggle-buildings").onclick = function () {
 
 reopenInterventionsBtn.onclick = function () {
   interventionsContainer.classList.remove("panel-hidden");
-  interventionsContainer.style.width = "250px";
+  interventionsContainer.style.width = "300px";
   reopenInterventionsBtn.style.display = "none";
 
   document.getElementById("resize-left").style.display = "block"; // 👈 Réafficher
@@ -2438,8 +2462,9 @@ reopenInterventionsBtn.onclick = function () {
 
 reopenBuildingsBtn.onclick = function () {
   buildingsContainer.classList.remove("panel-hidden");
-  buildingsContainer.style.width = "250px";
+  buildingsContainer.style.width = "300px";
   reopenBuildingsBtn.style.display = "none";
+  updateFabPosition();
 
   document.getElementById("resize-right").style.display = "block"; // 👈 Réafficher
 };
@@ -2447,7 +2472,7 @@ reopenBuildingsBtn.onclick = function () {
 function setupResize(
   container,
   isLeftSide = true,
-  minWidth = 200,
+  minWidth = 300,
   maxWidth = 450
 ) {
   const slider = document.createElement("div");
@@ -2516,5 +2541,34 @@ function setupResize(
   updateSliderPosition();
 }
 
-setupResize(interventionsContainer, true); // à gauche
-setupResize(buildingsContainer, false); // à droite
+const minBuildingWidth = 300; // ou la valeur que tu as passée
+const minInterventionWidth = 300; // ou la valeur que tu as passée
+buildingsContainer.style.width = `${minBuildingWidth}px`;
+interventionsContainer.style.width = `${minInterventionWidth}px`;
+
+setupResize(interventionsContainer, true, minInterventionWidth, 450); // à gauche
+setupResize(buildingsContainer, false, minBuildingWidth, 450); // à droite
+
+const fab = document.getElementById("add-building-fab");
+
+function updateFabPosition() {
+  const fab = document.getElementById("add-building-fab");
+  const sidebar = buildingsContainer; // ou document.getElementById("buildings-container")
+
+  const isVisible =
+    getComputedStyle(sidebar).display !== "none" &&
+    !sidebar.classList.contains("panel-hidden");
+
+  if (isVisible) {
+    const rect = sidebar.getBoundingClientRect();
+    fab.style.left = `${rect.left - fab.offsetWidth - 10}px`;
+    fab.style.right = "auto";
+  } else {
+    fab.style.left = "auto";
+    fab.style.right = "22px";
+  }
+}
+
+new ResizeObserver(updateFabPosition).observe(buildingsContainer);
+window.addEventListener("resize", updateFabPosition);
+updateFabPosition();
