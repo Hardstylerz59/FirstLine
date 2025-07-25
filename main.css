@@ -480,6 +480,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  position: relative;
+  z-index: 1100; /* Modale au dessus de l’overlay */
 }
 @keyframes fadeIn {
   from {
@@ -1286,4 +1288,97 @@ button.secondary:hover {
 }
 .vehicle-select-row.vehicle-disabled {
   opacity: 0.5;
+}
+
+.modal-statistics .modal-content {
+  width: 90%;
+  max-width: 700px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.modal-statistics header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.modal-statistics header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.modal-statistics .tab-switch {
+  display: flex;
+  gap: 10px;
+}
+
+.modal-statistics .tab-switch button {
+  flex: 1;
+  padding: 8px 12px;
+  background-color: #ddd;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.modal-statistics .tab-switch button.active {
+  background-color: #3498db;
+  color: white;
+}
+
+.modal-statistics .stats-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.modal-statistics .stats-table th,
+.modal-statistics .stats-table td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.modal-statistics .stats-table th {
+  background-color: #f0f0f0;
+}
+
+.modal-statistics .stats-container {
+  margin-top: 10px;
+}
+
+.modal-statistics .search-input {
+  margin-bottom: 10px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+th.sortable {
+  color: #3498db;
+  text-decoration: underline;
+}
+th.sorted {
+  font-weight: bold;
+}
+
+.manage-btn {
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: #2980b9;
+  color: #fff;
+  border: none;
+  font-size: 0.96em;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.manage-btn:hover {
+  background: #216099;
 }

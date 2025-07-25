@@ -76,6 +76,7 @@
         <button id="clear-missions-btn">
           ❌ Supprimer toutes les missions
         </button>
+        <button id="open‑stats">📊 Stats</button>
         <button onclick="signOut()" class="danger">🚪 Se déconnecter</button>
 
         <!-- Affichage email utilisateur connecté -->
@@ -174,6 +175,31 @@
       </div>
 
       <!-- ========== MODALES ========== -->
+
+      <div id="modal‑stats" class="modal modal-statistics hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+          <header>
+            <h2>Statistiques</h2>
+            <div class="tab-switch">
+              <button id="tab‑vehicles" class="active">Véhicules</button>
+              <button id="tab‑buildings">Bâtiments</button>
+            </div>
+            <button class="btn secondary" id="close‑stats">Fermer</button>
+          </header>
+          <div class="stats-container">
+            <input
+              type="text"
+              id="stats-search"
+              class="search-input"
+              placeholder="Rechercher..."
+            />
+            <table class="stats-table" id="stats-table">
+              <!-- Contenu dynamique -->
+            </table>
+          </div>
+        </div>
+      </div>
 
       <!-- Modale tableau de bord des véhicules -->
       <div id="vehicle-board-modal" class="modal hidden">

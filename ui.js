@@ -2848,3 +2848,271 @@ function updateFabPosition() {
 new ResizeObserver(updateFabPosition).observe(buildingsContainer);
 window.addEventListener("resize", updateFabPosition);
 updateFabPosition();
+
+// JS à intégrer
+
+// Variables de tri globales (mode, colonne, ordre)
+let statsSort = { mode: "vehicles", col: null, dir: 1 };
+
+document.getElementById("open‑stats").addEventListener("click", () => {
+  document.getElementById("modal‑stats").classList.remove("hidden");
+  statsSort = { mode: "vehicles", col: null, dir: 1 };
+  renderStats("vehicles");
+});
+
+document.getElementById("close‑stats").addEventListener("click", () => {
+  document.getElementById("modal‑stats").classList.add("hidden");
+});
+
+document.getElementById("tab‑vehicles").addEventListener("click", () => {
+  statsSort = { mode: "vehicles", col: null, dir: 1 };
+  renderStats("vehicles");
+});
+document.getElementById("tab‑buildings").addEventListener("click", () => {
+  statsSort = { mode: "buildings", col: null, dir: 1 };
+  renderStats("buildings");
+});
+
+document.getElementById("stats-search").addEventListener("input", () => {
+  const mode = document
+    .getElementById("tab‑vehicles")
+    .classList.contains("active")
+    ? "vehicles"
+    : "buildings";
+  renderStats(mode);
+});
+
+function renderStats(mode) {
+  statsSort.mode = mode; // Maj le mode pour le tri
+  const btnVeh = document.getElementById("tab‑vehicles");
+  const btnBld = document.getElementById("tab‑buildings");
+  btnVeh.classList.toggle("active", mode === "vehicles");
+  btnBld.classList.toggle("active", mode === "buildings");
+  const table = document.getElementById("stats-table");
+  const search = document.getElementById("stats-search").value.toLowerCase();
+  table.innerHTML = "";
+
+  if (mode === "vehicles") {
+    const headers = [
+      { label: "Bâtiment", sortable: true, col: "batiment" },
+      { label: "Véhicule" },
+      { label: "Type", sortable: true, col: "type" },
+      { label: "Kilométrage", sortable: true, col: "km" },
+      { label: "Usure %", sortable: true, col: "usure" },
+      { label: "Statut", sortable: true, col: "status" },
+      { label: "Gérer" },
+    ];
+    appendTableHeaderSortable(table, headers, statsSort);
+
+    // Prépare les lignes à trier
+    let rows = [];
+    buildings.forEach((b) => {
+      b.vehicles.forEach((v) => {
+        const km = v.kilometrage || 0;
+        const usure = v.usure || 0;
+        const statut = v.status || "";
+        const lib = `${b.name}`.toLowerCase();
+        const vlib = v.label.toLowerCase();
+        if (search && !(lib.includes(search) || vlib.includes(search))) return;
+        rows.push({
+          batiment: b.name,
+          vehicule: v.label,
+          type: v.type.toUpperCase(),
+          km: km / 1000, // Pour affichage décimal
+          usure: usure,
+          status: statut,
+          bId: b.id,
+          vId: v.id,
+        });
+      });
+    });
+
+    // Tri si demandé
+    if (statsSort.col) {
+      rows.sort((a, b) => {
+        let va = a[statsSort.col],
+          vb = b[statsSort.col];
+        if (typeof va === "string" && typeof vb === "string") {
+          return va.localeCompare(vb) * statsSort.dir;
+        } else {
+          return (va - vb) * statsSort.dir;
+        }
+      });
+    }
+
+    if (!rows.length) {
+      appendNoResultRow(table, headers.length);
+    } else {
+      rows.forEach((r) => {
+        const statutHtml = `<span class="status ${
+          r.status
+        }">${r.status.toUpperCase()}</span>`;
+        const manageBtn = `<button class="manage-btn" data-building-id="${r.bId}" data-vehicle-id="${r.vId}">Gérer</button>`;
+        appendTableRowHtml(table, [
+          escapeHtml(r.batiment),
+          escapeHtml(r.vehicule),
+          escapeHtml(r.type),
+          r.km.toFixed(2),
+          r.usure.toFixed(1),
+          statutHtml,
+          manageBtn,
+        ]);
+      });
+    }
+  } else {
+    const headers = [
+      { label: "Bâtiment", sortable: true, col: "batiment" },
+      { label: "Type", sortable: true, col: "type" },
+      { label: "Nb véhicules", sortable: true, col: "nbVeh" },
+      { label: "Personnel total", sortable: true, col: "total" },
+      { label: "Gérer" },
+    ];
+    appendTableHeaderSortable(table, headers, statsSort);
+
+    let rows = [];
+    buildings.forEach((b) => {
+      const nbVeh = b.vehicles.length;
+      const personnelTotal = getTotalPersonnel(b);
+      const txt = `${b.name}`.toLowerCase();
+      if (search && !txt.includes(search)) return;
+      rows.push({
+        batiment: b.name,
+        type: b.type.toUpperCase(),
+        nbVeh: nbVeh,
+        total: personnelTotal,
+        bId: b.id,
+      });
+    });
+
+    // Tri si demandé
+    if (statsSort.col) {
+      rows.sort((a, b) => {
+        let va = a[statsSort.col],
+          vb = b[statsSort.col];
+        if (typeof va === "string" && typeof vb === "string") {
+          return va.localeCompare(vb) * statsSort.dir;
+        } else {
+          return (va - vb) * statsSort.dir;
+        }
+      });
+    }
+
+    if (!rows.length) {
+      appendNoResultRow(table, headers.length);
+    } else {
+      rows.forEach((r) => {
+        const manageBtn = `<button class="manage-btn" data-building-id="${r.bId}">Gérer</button>`;
+        appendTableRowHtml(table, [
+          escapeHtml(r.batiment),
+          escapeHtml(r.type),
+          r.nbVeh,
+          r.total,
+          manageBtn,
+        ]);
+      });
+    }
+  }
+
+  // Ajoute listeners sur boutons "Gérer" (attendre DOM update)
+  setTimeout(() => {
+    document.querySelectorAll("#stats-table .manage-btn").forEach((btn) => {
+      const bId = btn.getAttribute("data-building-id");
+      const vId = btn.getAttribute("data-vehicle-id");
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (vId) openVehicleDashboard(vId);
+        else openBuildingModal(getSafeId(bId));
+      });
+    });
+  }, 10);
+}
+
+// Ajoute un header cliquable pour le tri
+function appendTableHeaderSortable(table, headers, sort) {
+  const row = document.createElement("tr");
+  headers.forEach((h, idx) => {
+    const th = document.createElement("th");
+    th.textContent = h.label;
+    if (h.sortable) {
+      th.classList.add("sortable");
+      th.style.cursor = "pointer";
+      if (sort.col === h.col) th.classList.add("sorted");
+      // Petit chevron si c'est trié
+      if (sort.col === h.col) {
+        th.textContent += sort.dir > 0 ? " ▲" : " ▼";
+      }
+      th.addEventListener("click", () => {
+        // Si déjà trié sur cette colonne => inverse l’ordre, sinon tri asc.
+        if (sort.col === h.col) {
+          sort.dir *= -1;
+        } else {
+          sort.col = h.col;
+          sort.dir = 1;
+        }
+        renderStats(sort.mode);
+      });
+    }
+    row.appendChild(th);
+  });
+  table.appendChild(row);
+}
+
+// Fonctions utilitaires déjà données plus haut (inchangées)
+function getTotalPersonnel(building) {
+  if (["cpi", "cs", "csp"].includes(building.type)) {
+    return (
+      parseInt(building.personnelAvailablePro || 0, 10) +
+      parseInt(building.personnelAvailableVol || 0, 10)
+    );
+  } else {
+    return parseInt(building.personnelAvailable || 0, 10);
+  }
+}
+function appendTableRow(table, values) {
+  const row = document.createElement("tr");
+  values.forEach((val) => {
+    const td = document.createElement("td");
+    td.textContent = val;
+    row.appendChild(td);
+  });
+  table.appendChild(row);
+}
+function appendTableRowHtml(table, values) {
+  const row = document.createElement("tr");
+  values.forEach((val) => {
+    const td = document.createElement("td");
+    if (
+      typeof val === "string" &&
+      (val.includes("<button") || val.includes("status"))
+    ) {
+      td.innerHTML = val;
+    } else {
+      td.textContent = val;
+    }
+    row.appendChild(td);
+  });
+  table.appendChild(row);
+}
+
+function appendNoResultRow(table, colspan) {
+  const row = document.createElement("tr");
+  const td = document.createElement("td");
+  td.colSpan = colspan;
+  td.style.textAlign = "center";
+  td.style.color = "#888";
+  td.textContent = "Aucun résultat";
+  row.appendChild(td);
+  table.appendChild(row);
+}
+function escapeHtml(str) {
+  if (typeof str !== "string") return str;
+  return str.replace(/[&<>"']/g, function (m) {
+    return {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    }[m];
+  });
+}
