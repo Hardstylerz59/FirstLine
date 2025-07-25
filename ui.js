@@ -472,23 +472,33 @@ function setupPersonnelCountListeners() {
         const row = cb.closest(".vehicle-select-row");
         const status = row?.querySelector(".status");
 
+        // Synchronisation avec la sidebar
+        const sidebarStatus = document.querySelector(
+          `.status[data-vehicle-id="${cb.dataset.vehicleId}"]`
+        );
+
         if (cb.checked) {
           if (used + staff > base) {
             cb.checked = false;
             cb.title = "Pas assez de personnel disponible pour ce véhicule.";
             return;
           }
+
           cb.removeAttribute("title");
           used += staff;
 
-          if (status) {
-            status.classList.add("selected-synced");
-          }
+          if (status) status.classList.add("selected-synced");
+          if (sidebarStatus) sidebarStatus.classList.add("selected-synced");
         } else {
           if (status) {
             status.classList.remove("selected-synced");
             status.style.backgroundColor = "";
             status.style.color = "";
+          }
+          if (sidebarStatus) {
+            sidebarStatus.classList.remove("selected-synced");
+            sidebarStatus.style.backgroundColor = "";
+            sidebarStatus.style.color = "";
           }
         }
 
@@ -555,6 +565,7 @@ function getVehicleLatLng(vehicle, building) {
 function closeCallModal() {
   currentCallMission = null;
   document.getElementById("call-modal").classList.add("hidden");
+  clearSelectedSyncedStatus();
 }
 
 document.getElementById("reveal-address-btn").addEventListener("click", () => {
@@ -1397,6 +1408,7 @@ document.getElementById("send-reinforcements-btn").onclick = () => {
 
 function closeReinforcementModal() {
   document.getElementById("reinforcement-modal").classList.add("hidden");
+  clearSelectedSyncedStatus();
 }
 
 function sendReinforcements() {

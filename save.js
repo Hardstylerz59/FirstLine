@@ -434,9 +434,13 @@ async function loadState() {
       li.classList.add("vehicle-item");
       li.innerHTML = `
         <span>${vehicle.label}</span>
-        <span class="status ${
-          vehicle.status
-        }">${vehicle.status.toUpperCase()}</span>
+        <span
+          class="status ${v.status}"
+          data-vehicle-id="${v.id}"
+          title="${v.status.toUpperCase()}"
+        >
+          ${v.status.toUpperCase()}
+        </span>
       `;
       vehList?.appendChild(li);
       vehicle.statusElement = li.querySelector(".status");

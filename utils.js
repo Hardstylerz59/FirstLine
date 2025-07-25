@@ -1233,3 +1233,11 @@ setInterval(() => {
     }
   });
 }, 700);
+
+function clearSelectedSyncedStatus() {
+  document.querySelectorAll(".status.selected-synced").forEach((el) => {
+    el.classList.remove("selected-synced");
+    el.style.backgroundColor = "";
+    el.style.color = "";
+  });
+}
