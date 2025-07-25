@@ -10,11 +10,6 @@ html,
 body,
 #map {
   height: 100%;
-}
-
-html,
-body {
-  height: 100%;
   margin: 0;
   overflow: hidden;
   display: flex;
@@ -301,13 +296,6 @@ body {
   box-shadow: 0 4px 14px rgba(44, 62, 80, 0.09);
 }
 
-.building-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
 .manage-panel {
   margin-top: 10px;
   border-top: 1px solid #e3e3e3;
@@ -318,8 +306,7 @@ body {
 }
 
 /* === VEHICULES === */
-.vehicle-list li,
-.vehicle-entry {
+.vehicle-list li {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -356,6 +343,8 @@ body {
 #map {
   flex-grow: 1;
   position: relative;
+  width: 100%;
+  height: 100%;
 }
 
 #history-button-wrapper {
@@ -562,9 +551,7 @@ button.secondary:hover {
 }
 
 /* === AUTRES === */
-.hidden {
-  display: none !important;
-}
+
 .modal-section {
   margin-bottom: 24px;
 }
@@ -663,8 +650,11 @@ button.secondary:hover {
 }
 
 .building-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
   font-weight: bold;
-  margin-bottom: 6px;
 }
 
 /* === COMMUN === */
@@ -919,28 +909,6 @@ button.secondary:hover {
   overflow: hidden;
 }
 
-#map {
-  height: 100%; /* déjà bon, assure-toi juste de le garder */
-  width: 100%;
-}
-
-#map-notice {
-  position: absolute;
-  top: 10%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: white;
-  padding: 12px 20px;
-  border-radius: 10px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  max-width: 500px;
-  font-size: 16px;
-}
-
 #buildings-panel {
   flex: 1 1 auto;
   display: flex;
@@ -952,11 +920,6 @@ button.secondary:hover {
 #buildings-header {
   padding: 10px;
   flex-shrink: 0;
-}
-
-#map {
-  flex-grow: 1;
-  height: 100%;
 }
 
 /* === AUTH UI === */
@@ -1315,4 +1278,12 @@ button.secondary:hover {
 .status.selected-synced {
   transition: background-color 0.2s ease, color 0.2s ease;
   border: 1px solid currentColor;
+}
+
+.building-header.no-staff-full {
+  color: red;
+  font-weight: bold;
+}
+.vehicle-select-row.vehicle-disabled {
+  opacity: 0.5;
 }

@@ -445,7 +445,9 @@ function buildVehicleListForCall(autoSelect = true) {
 
 function setupPersonnelCountListeners() {
   document
-    .querySelectorAll("#vehicle-list input[type=checkbox]")
+    .querySelectorAll(
+      "#vehicle-list input[type=checkbox], #reinforcement-list input[type=checkbox]"
+    )
     .forEach((cb) => {
       cb.addEventListener("change", () => {
         const bid = cb.dataset.buildingId;
@@ -478,12 +480,16 @@ function setupPersonnelCountListeners() {
           }
           cb.removeAttribute("title");
           used += staff;
-        }
 
-        if (!cb.checked && status) {
-          status.classList.remove("selected-synced");
-          status.style.backgroundColor = "";
-          status.style.color = "";
+          if (status) {
+            status.classList.add("selected-synced");
+          }
+        } else {
+          if (status) {
+            status.classList.remove("selected-synced");
+            status.style.backgroundColor = "";
+            status.style.color = "";
+          }
         }
 
         const dispo = base - used;
@@ -864,8 +870,10 @@ function openReinforcementModal(missionId) {
 }
 
 function buildVehicleListForReinforcement() {
+  let personnelVirtuel = {};
   const position = currentMissionForReinforcement?.position;
   if (!position) return;
+
   const container = document.getElementById("reinforcement-list");
   if (!container) return;
 
@@ -878,58 +886,207 @@ function buildVehicleListForReinforcement() {
   const typeSelected =
     document.getElementById("reinforcement-type-select")?.value || "TOUS";
 
-  const disponibles = [];
+  const byBuilding = {};
+  const allVehicles = [];
+
   buildings.forEach((b) => {
     b.vehicles.forEach((v) => {
       if ((v.ready && v.status === "dc") || v.status === "ot") {
         const dist = map.distance(position, v.marker?.getLatLng() || b.latlng);
-        disponibles.push({ building: b, vehicle: v, distance: dist });
+        const matchesSearch =
+          searchValue === "" ||
+          v.label.toLowerCase().includes(searchValue) ||
+          v.type.toLowerCase().includes(searchValue);
+        const matchesType = typeSelected === "TOUS" || v.type === typeSelected;
+
+        if (matchesSearch && matchesType) {
+          allVehicles.push({
+            vehicle: v,
+            distance: dist,
+            building: b,
+          });
+        }
       }
     });
   });
-  disponibles.sort((a, b) => a.distance - b.distance);
 
-  const filteredDisponibles = disponibles.filter((entry) => {
-    const matchesSearch =
-      searchValue === "" ||
-      entry.vehicle.label.toLowerCase().includes(searchValue) ||
-      entry.vehicle.type.toLowerCase().includes(searchValue);
-    const matchesType =
-      typeSelected === "TOUS" || entry.vehicle.type === typeSelected;
-    return matchesSearch && matchesType;
+  allVehicles.sort((a, b) => a.distance - b.distance);
+
+  allVehicles.forEach(({ vehicle, distance, building }) => {
+    if (!byBuilding[building.id]) {
+      byBuilding[building.id] = {
+        building,
+        vehicles: [],
+      };
+    }
+    byBuilding[building.id].vehicles.push({ vehicle, distance });
   });
 
-  filteredDisponibles.forEach((entry) => {
-    const v = entry.vehicle;
-    const building = entry.building;
-    const cleanLabel = v.label.split("—")[0].trim();
-    // Vérifie si déjà coché
-    const prevChecked = !!document.querySelector(
-      `#reinforcement-list input[data-vehicle-id="${v.id}"]`
-    )?.checked;
+  Object.values(byBuilding).forEach(({ building, vehicles }) => {
+    const section = document.createElement("div");
+    section.className = "building-group";
 
-    const row = document.createElement("label"); // Utilise <label>
-    row.className = "vehicle-select-row";
-    row.dataset.vehicleId = v.id;
-    row.dataset.buildingId = building.id;
-    row.innerHTML = `
-      <input type="checkbox"
-        data-building-id="${building.id}"
-        data-vehicle-id="${v.id}"
-        ${prevChecked ? "checked" : ""}>
-      <span class="vehicle-label">${cleanLabel}</span>
-      <span class="vehicle-distance">${Math.round(entry.distance)} m</span>
-      <span class="status ${v.status}">${v.status.toUpperCase()}</span>
+    const shortType = ["cpi", "cs", "csp"].includes(building.type)
+      ? "CIS"
+      : (building.type?.fr || building.type || "").toUpperCase();
+
+    let personnelTotal = 0;
+    let personnelDispo = 0;
+
+    if (["cpi", "cs", "csp"].includes(building.type)) {
+      const pro = parseInt(building.personnelPro || 0, 10);
+      const vol = parseInt(building.personnelVol || 0, 10);
+      personnelVirtuel[building.id] = {
+        pro: parseInt(building.personnelAvailablePro ?? pro, 10),
+        vol: parseInt(building.personnelAvailableVol ?? vol, 10),
+      };
+      personnelTotal = pro + vol;
+      personnelDispo =
+        personnelVirtuel[building.id].pro + personnelVirtuel[building.id].vol;
+    } else {
+      const total = parseInt(building.personnel || 0, 10);
+      const dispo =
+        building.personnelAvailable != null
+          ? parseInt(building.personnelAvailable, 10)
+          : total;
+      personnelVirtuel[building.id] = dispo;
+      personnelTotal = total;
+      personnelDispo = dispo;
+    }
+
+    const header = document.createElement("div");
+    header.className = "building-header";
+    header.innerHTML = `
+      <strong>🚒 ${shortType} ${building.name}</strong>
+      – 👥 Dispo:<span class="perso-left"
+            data-building-id="${building.id}"
+            data-total="${personnelTotal}">
+        ${personnelDispo}
+      </span> / ${personnelTotal}
     `;
-    container.appendChild(row);
+    if (personnelDispo === 0) header.classList.add("no-staff");
+    section.appendChild(header);
+
+    vehicles.sort((a, b) => {
+      const typeA = a.vehicle.type.toUpperCase();
+      const typeB = b.vehicle.type.toUpperCase();
+      if (typeA !== typeB) return typeA.localeCompare(typeB);
+      return a.vehicle.label
+        .toUpperCase()
+        .localeCompare(b.vehicle.label.toUpperCase());
+    });
+
+    vehicles.forEach(({ vehicle: v, distance }) => {
+      const typeKey = v.type.toUpperCase();
+      const staffRequired = requiredPersonnel?.[typeKey] || v.personnel || 1;
+
+      const cleanLabel = v.label.split("—")[0].trim();
+      const row = document.createElement("label");
+      row.className = "vehicle-select-row";
+      row.dataset.vehicleId = v.id;
+      row.dataset.buildingId = building.id;
+      row.innerHTML = `
+        <input type="checkbox"
+          data-building-id="${building.id}"
+          data-vehicle-id="${v.id}"
+          data-staff="${staffRequired}">
+        <span class="vehicle-label">${cleanLabel}</span>
+        <span class="vehicle-distance">${Math.round(distance)} m</span>
+        <span class="status ${v.status}">${v.status.toUpperCase()}</span>
+      `;
+      section.appendChild(row);
+
+      const checkbox = row.querySelector("input[type=checkbox]");
+      const statusSpan = row.querySelector(".status");
+
+      let virt = personnelVirtuel[building.id];
+      let enough = ["cpi", "cs", "csp"].includes(building.type)
+        ? virt.pro + virt.vol >= staffRequired
+        : virt >= staffRequired;
+      checkbox.disabled = !enough;
+      checkbox.title = !enough ? "Pas assez de personnel disponible." : "";
+
+      if (!enough) row.classList.add("vehicle-disabled");
+
+      checkbox.addEventListener("change", () => {
+        const buildingId = checkbox.dataset.buildingId;
+        const isFire = ["cpi", "cs", "csp"].includes(building.type);
+        const virt = personnelVirtuel[buildingId];
+
+        if (checkbox.checked) {
+          const enoughNow = isFire
+            ? virt.pro + virt.vol >= staffRequired
+            : virt >= staffRequired;
+          if (!enoughNow) {
+            checkbox.checked = false;
+            alert("Pas assez de personnel disponible pour ce véhicule.");
+            return;
+          }
+
+          if (isFire) {
+            const takePro = Math.min(virt.pro, staffRequired);
+            const takeVol = staffRequired - takePro;
+            virt.pro -= takePro;
+            virt.vol -= takeVol;
+            checkbox.dataset.takePro = takePro;
+            checkbox.dataset.takeVol = takeVol;
+          } else {
+            personnelVirtuel[buildingId] = Math.max(0, virt - staffRequired);
+          }
+
+          statusSpan.classList.add("selected-synced");
+        } else {
+          if (isFire) {
+            const giveBackPro = parseInt(checkbox.dataset.takePro || "0", 10);
+            const giveBackVol = parseInt(checkbox.dataset.takeVol || "0", 10);
+            virt.pro += giveBackPro;
+            virt.vol += giveBackVol;
+            delete checkbox.dataset.takePro;
+            delete checkbox.dataset.takeVol;
+          } else {
+            personnelVirtuel[buildingId] += staffRequired;
+          }
+
+          statusSpan.classList.remove("selected-synced");
+        }
+
+        const dispo = isFire
+          ? virt.pro + virt.vol
+          : personnelVirtuel[buildingId];
+
+        const dispoSpan = section.querySelector(".perso-left");
+        dispoSpan.textContent = dispo;
+        header.classList.toggle("no-staff", dispo <= 0);
+
+        section.querySelectorAll("input[type=checkbox]").forEach((cb) => {
+          const required = parseInt(cb.dataset.staff || "1", 10);
+          const enoughOther = isFire
+            ? virt.pro + virt.vol >= required
+            : personnelVirtuel[buildingId] >= required;
+          cb.disabled = !enoughOther && !cb.checked;
+          cb.title =
+            !enoughOther && !cb.checked
+              ? "Pas assez de personnel disponible."
+              : "";
+        });
+      });
+    });
+
+    const allCheckboxes = section.querySelectorAll("input[type=checkbox]");
+    const allDisabled = Array.from(allCheckboxes).every((cb) => cb.disabled);
+    if (allDisabled) {
+      header.classList.add("no-staff-full");
+    }
+
+    container.appendChild(section);
   });
 
-  // Les events sont natifs avec le <label> + <input>, plus besoin de click manuel !
-  // Si tu veux vraiment forcer le curseur :
-  // document.querySelectorAll('.vehicle-select-row').forEach(row => row.style.cursor = 'pointer');
+  setupPersonnelCountListeners(); // ← ✔ calcule le personnel dynamique et bloque les checkbox si besoin
 
-  // Debounce pour search/filter
-  const debouncedRebuild = debounce(buildVehicleListForReinforcement, 120);
+  const debouncedRebuild = debounce(() => {
+    buildVehicleListForReinforcement();
+  }, 120);
+
   document
     .getElementById("reinforcement-search-input")
     ?.addEventListener("input", debouncedRebuild);
@@ -941,22 +1098,35 @@ function buildVehicleListForReinforcement() {
 function refreshVehicleListForReinforcement() {
   const position = currentMissionForReinforcement?.position;
   if (!position) return;
+
   const container = document.getElementById("reinforcement-list");
   if (!container) return;
 
-  // Map pour les cases déjà cochées AVANT le refresh
   const checkedMap = {};
   container.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
     if (cb.checked) checkedMap[cb.dataset.vehicleId] = true;
   });
 
-  // Liste des véhicules disponibles et leur ligne affichée
   const lignesActuelles = {};
   container.querySelectorAll(".vehicle-select-row").forEach((row) => {
     lignesActuelles[row.dataset.vehicleId] = row;
   });
 
-  // Récupère les véhicules réellement dispo
+  const personnelVirtuel = {};
+  buildings.forEach((b) => {
+    if (["cpi", "cs", "csp"].includes(b.type)) {
+      const pro = parseInt(b.personnelPro || 0, 10);
+      const vol = parseInt(b.personnelVol || 0, 10);
+      personnelVirtuel[b.id] = {
+        pro: parseInt(b.personnelAvailablePro ?? pro, 10),
+        vol: parseInt(b.personnelAvailableVol ?? vol, 10),
+      };
+    } else {
+      const total = parseInt(b.personnel || 0, 10);
+      personnelVirtuel[b.id] = parseInt(b.personnelAvailable ?? total, 10);
+    }
+  });
+
   const disponibles = [];
   buildings.forEach((b) => {
     b.vehicles.forEach((v) => {
@@ -966,9 +1136,9 @@ function refreshVehicleListForReinforcement() {
       }
     });
   });
+
   disponibles.sort((a, b) => a.distance - b.distance);
 
-  // Applique recherche/filtre
   const searchValue = (
     document.getElementById("reinforcement-search-input")?.value || ""
   ).toLowerCase();
@@ -985,23 +1155,21 @@ function refreshVehicleListForReinforcement() {
     return matchesSearch && matchesType;
   });
 
-  // Met à jour le DOM :
-  // 1. Supprime les lignes qui ne devraient plus être là
   Object.keys(lignesActuelles).forEach((vehicleId) => {
     if (!filteredDisponibles.some((entry) => entry.vehicle.id === vehicleId)) {
       lignesActuelles[vehicleId].remove();
     }
   });
 
-  // 2. Ajoute ou met à jour les lignes qui doivent être là
   filteredDisponibles.forEach((entry) => {
     const v = entry.vehicle;
     const b = entry.building;
     const cleanLabel = v.label.split("—")[0].trim();
-    const checked = checkedMap[v.id] ? "checked" : "";
+    const staffRequired =
+      requiredPersonnel?.[v.type.toUpperCase()] || v.personnel || 1;
+
     let row = lignesActuelles[v.id];
 
-    // Crée ou remplace la ligne
     if (!row) {
       row = document.createElement("label");
       row.className = "vehicle-select-row";
@@ -1010,16 +1178,106 @@ function refreshVehicleListForReinforcement() {
       container.appendChild(row);
     }
 
+    const isChecked = !!checkedMap[v.id];
+
     row.innerHTML = `
       <input type="checkbox"
         data-building-id="${b.id}"
         data-vehicle-id="${v.id}"
-        ${checked}>
+        data-staff="${staffRequired}"
+        ${isChecked ? "checked" : ""}>
       <span class="vehicle-label">${cleanLabel}</span>
       <span class="vehicle-distance">${Math.round(entry.distance)} m</span>
       <span class="status ${v.status}">${v.status.toUpperCase()}</span>
     `;
+
+    const checkbox = row.querySelector("input[type=checkbox]");
+    const statusSpan = row.querySelector(".status");
+
+    if (isChecked) statusSpan.classList.add("selected-synced");
+    else statusSpan.classList.remove("selected-synced");
+
+    checkbox.addEventListener("change", () => {
+      const buildingId = checkbox.dataset.buildingId;
+      const isFire = ["cpi", "cs", "csp"].includes(b.type);
+      const virt = personnelVirtuel[buildingId];
+
+      if (checkbox.checked) {
+        const enough = isFire
+          ? virt.pro + virt.vol >= staffRequired
+          : virt >= staffRequired;
+
+        if (!enough) {
+          checkbox.checked = false;
+          alert("Pas assez de personnel disponible pour ce véhicule.");
+          return;
+        }
+
+        if (isFire) {
+          const takePro = Math.min(virt.pro, staffRequired);
+          const takeVol = staffRequired - takePro;
+          virt.pro -= takePro;
+          virt.vol -= takeVol;
+          checkbox.dataset.takePro = takePro;
+          checkbox.dataset.takeVol = takeVol;
+        } else {
+          personnelVirtuel[buildingId] = Math.max(0, virt - staffRequired);
+        }
+
+        statusSpan.classList.add("selected-synced");
+      } else {
+        if (isFire) {
+          const giveBackPro = parseInt(checkbox.dataset.takePro || "0", 10);
+          const giveBackVol = parseInt(checkbox.dataset.takeVol || "0", 10);
+          virt.pro += giveBackPro;
+          virt.vol += giveBackVol;
+          delete checkbox.dataset.takePro;
+          delete checkbox.dataset.takeVol;
+        } else {
+          personnelVirtuel[buildingId] += staffRequired;
+        }
+
+        statusSpan.classList.remove("selected-synced");
+      }
+
+      const dispoSpan = container.querySelector(
+        `.perso-left[data-building-id="${buildingId}"]`
+      );
+      if (dispoSpan) {
+        dispoSpan.textContent = isFire
+          ? virt.pro + virt.vol
+          : personnelVirtuel[buildingId];
+      }
+
+      // Met à jour l'état de toutes les checkbox du même bâtiment
+      container
+        .querySelectorAll(`input[data-building-id="${buildingId}"]`)
+        .forEach((cb) => {
+          const required = parseInt(cb.dataset.staff || "1", 10);
+          const enoughOther = isFire
+            ? virt.pro + virt.vol >= required
+            : personnelVirtuel[buildingId] >= required;
+          cb.disabled = !enoughOther && !cb.checked;
+          cb.title =
+            !enoughOther && !cb.checked
+              ? "Pas assez de personnel disponible."
+              : "";
+        });
+    });
+
+    const virt = personnelVirtuel[b.id];
+    const enough = ["cpi", "cs", "csp"].includes(b.type)
+      ? virt.pro + virt.vol >= staffRequired
+      : virt >= staffRequired;
+    checkbox.disabled = !enough && !isChecked;
+    if (checkbox.disabled) row.classList.add("vehicle-disabled");
+    row.classList.toggle("vehicle-disabled", !enough && !isChecked);
+
+    checkbox.title =
+      !enough && !isChecked ? "Pas assez de personnel disponible." : "";
   });
+
+  setupPersonnelCountListeners();
 }
 
 document.getElementById("send-reinforcements-btn").onclick = () => {
@@ -2218,11 +2476,9 @@ function openHospitalChoiceModal(victimId, missionId) {
 function handleNoHospitalTransport(victimId, missionId) {
   closeCustomModal();
 
-  // Trouver la mission, la victime, et le VSAV engagé (dans dispatched)
   const mission = missions.find((m) => m.id === missionId);
   if (!mission) return;
 
-  // Trouve le dispatch VSAV pour cette victime
   const dispatched =
     (mission.dispatched || []).find(
       (d) =>
@@ -2240,15 +2496,13 @@ function handleNoHospitalTransport(victimId, missionId) {
 
   const victim = mission.victims.find((v) => v.id === victimId);
   if (victim) {
-    victim.transported = true; // <-- clé attendue par ta condition
-
+    victim.transported = true;
     verifyMissionVehicles(mission);
   }
 
-  // Passe immédiatement en retour (OT), pas de tr !
-
+  // Passe immédiatement en retour (OT)
   vehicle.retourEnCours = true;
-  setVehicleStatus(vehicle, "ot", { mission, building });
+  updateVehicleStatus(vehicle, "ot", { mission, building }); // Pas de setVehicleStatus ici
 
   const startPoint = vehicle.marker?.getLatLng?.() || vehicle.lastKnownPosition;
   const target = building.latlng;
@@ -2262,6 +2516,19 @@ function handleNoHospitalTransport(victimId, missionId) {
         L.latLng(lat, lng)
       );
       if (coords.length < 2) {
+        // === RESTITUTION DU PERSONNEL ===
+        if (["cpi", "cs", "csp"].includes(building.type)) {
+          const engaged = vehicle._engagedStaff || { pro: 0, vol: 0 };
+          building.personnelAvailablePro =
+            (building.personnelAvailablePro || 0) + (engaged.pro || 0);
+          building.personnelAvailableVol =
+            (building.personnelAvailableVol || 0) + (engaged.vol || 0);
+          vehicle._engagedStaff = { pro: 0, vol: 0 };
+        } else {
+          building.personnelAvailable =
+            (building.personnelAvailable || 0) + (vehicle.required || 0);
+        }
+
         vehicle.lastKnownPosition = target;
         vehicle.ready = true;
         vehicle.status = "dc";
@@ -2319,14 +2586,12 @@ function handleNoHospitalTransport(victimId, missionId) {
         const lat =
           segmentStart.lat + (segmentEnd.lat - segmentStart.lat) * segRatio;
         const lng =
-          segmentStart.lng + (segmentEnd.lng - segmentEnd.lng) * segRatio;
+          segmentStart.lng + (segmentEnd.lng - segmentStart.lng) * segRatio;
 
-        // --- PATCH KILOMÉTRAGE ---
         const currentLatLng = L.latLng(lat, lng);
         const distStep = prevLatLng.distanceTo(currentLatLng);
         vehicle.kilometrage = (vehicle.kilometrage || 0) + distStep;
         prevLatLng = currentLatLng;
-        // --- FIN PATCH ---
 
         vehicle.lastKnownPosition = currentLatLng;
         vehicle.marker.setLatLng(currentLatLng);
@@ -2335,11 +2600,24 @@ function handleNoHospitalTransport(victimId, missionId) {
           vehicle.returnAnimation = requestAnimationFrame(animateReturn);
         } else {
           cancelAnimationFrame(vehicle.returnAnimation);
+
+          // === RESTITUTION DU PERSONNEL ===
+          if (["cpi", "cs", "csp"].includes(building.type)) {
+            const engaged = vehicle._engagedStaff || { pro: 0, vol: 0 };
+            building.personnelAvailablePro =
+              (building.personnelAvailablePro || 0) + (engaged.pro || 0);
+            building.personnelAvailableVol =
+              (building.personnelAvailableVol || 0) + (engaged.vol || 0);
+            vehicle._engagedStaff = { pro: 0, vol: 0 };
+          } else {
+            building.personnelAvailable =
+              (building.personnelAvailable || 0) + (vehicle.required || 0);
+          }
+
           vehicle.retourEnCours = false;
           vehicle.ready = true;
           vehicle.status = "dc";
           updateVehicleStatus(vehicle, "dc");
-          logVehicleRadio(vehicle, "dc", { targetBuilding: building });
           refreshBuildingStatus(building);
           refreshVehicleStatusForBuilding(building);
           updateVehicleListDisplay(getSafeId(building));
@@ -2350,8 +2628,6 @@ function handleNoHospitalTransport(victimId, missionId) {
 
       animateReturn();
     });
-
-  // (Optionnel) Retire la victime de la mission, ajoute historique, etc.
 }
 
 function launchPatientTransport(victimId, missionId, hospitalId) {
