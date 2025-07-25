@@ -1996,4 +1996,25 @@ function retryCriticalVictimTreatment(mission) {
   });
 }
 
-setInterval(createMission, 3000);
+let missionAutoEnabled = true;
+
+function createMissionSafely() {
+  if (missionAutoEnabled) createMission();
+}
+
+function toggleMissionGeneration() {
+  missionAutoEnabled = !missionAutoEnabled;
+
+  const icon = document.getElementById("mission-toggle");
+  icon.title = missionAutoEnabled
+    ? "Auto-génération activée"
+    : "Auto-génération désactivée";
+  icon.classList.toggle("paused", !missionAutoEnabled);
+}
+
+document
+  .getElementById("mission-toggle")
+  .addEventListener("click", toggleMissionGeneration);
+
+// intervale existant à modifier :
+setInterval(createMissionSafely, 3000);

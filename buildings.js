@@ -69,7 +69,7 @@ map.on("click", (e) => {
     type === "hopital" ? "CH" : type === "police" ? "Commissariat" : "CIS";
 
   const li = document.createElement("li");
-  li.classList.add("building-block");
+  li.classList.add("building-block", type);
   li.id = `building-block-${safeId}`;
   li.innerHTML = `
   <div class="building-header">
