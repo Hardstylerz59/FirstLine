@@ -484,6 +484,9 @@ async function loadState() {
     buildingById[getSafeId(building)] = building;
     refreshBuildingStatus(building);
   }
+  console.log("📍 Préchargement des POIs...");
+  await preloadAllPOIs();
+  console.log("✅ POIs chargés !");
 
   // 🚨 Restauration des missions
   for (const ms of state.missions) {

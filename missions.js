@@ -1,3 +1,73 @@
+const buildingPoisMap = new Map();
+
+async function preloadAllPOIs() {
+  const loader = document.getElementById("loader-pois");
+  loader.classList.remove("hidden");
+
+  for (const building of buildings) {
+    await fetchPOIsForBuilding(building, [
+      "shop",
+      "amenity",
+      "building",
+      "tourism",
+      "landuse",
+      "natural",
+      "highway",
+      "leisure",
+      "man_made",
+      "railway",
+      "public_transport",
+    ]);
+  }
+
+  loader.classList.add("hidden");
+}
+
+async function fetchPOIsForBuilding(building, tags = []) {
+  const lat = building.latlng.lat;
+  const lng = building.latlng.lng;
+  const radius = 1000;
+
+  const filters = tags
+    .map(
+      (tag) => `
+      node["${tag}"](around:${radius},${lat},${lng});
+      way["${tag}"](around:${radius},${lat},${lng});
+      relation["${tag}"](around:${radius},${lat},${lng});
+    `
+    )
+    .join("\n");
+
+  const query = `
+    [out:json][timeout:25];
+    (
+      ${filters}
+    );
+    out center;
+  `;
+
+  const url =
+    "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
+
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+    const elements = json.elements
+      .filter((el) => el.tags)
+      .map((el) => ({
+        lat: el.lat ?? el.center?.lat,
+        lng: el.lon ?? el.center?.lon,
+        tags: el.tags,
+      }))
+      .filter((el) => el.lat && el.lng);
+
+    buildingPoisMap.set(building.id, elements);
+  } catch (e) {
+    console.warn("Erreur chargement POIs OSM", e);
+    buildingPoisMap.set(building.id, []);
+  }
+}
+
 function createMission() {
   if (missions.length >= buildings.length + 1 || buildings.length === 0) return;
 
@@ -5,6 +75,7 @@ function createMission() {
   const realType = ["cpi", "cs", "csp"].includes(origin.type)
     ? "caserne"
     : origin.type;
+
   const list = MISSION_TYPES[realType] || [];
   if (list.length === 0) return;
 
@@ -17,9 +88,34 @@ function createMission() {
   const selected =
     missionsEligible[Math.floor(Math.random() * missionsEligible.length)];
 
-  const lat = origin.latlng.lat + (Math.random() - 0.5) * 0.05;
-  const lng = origin.latlng.lng + (Math.random() - 0.5) * 0.05;
-  const latlng = L.latLng(lat, lng);
+  let latlng = null;
+
+  if (selected.poiTags?.length > 0) {
+    const pois = buildingPoisMap.get(origin.id);
+    if (pois === undefined) return;
+
+    const matchingPois = pois.filter((poi) =>
+      selected.poiTags.some((tag) => poi.tags?.[tag])
+    );
+
+    if (matchingPois.length > 0) {
+      const poi = matchingPois[Math.floor(Math.random() * matchingPois.length)];
+      latlng = L.latLng(poi.lat, poi.lng);
+
+      usedPoi = poi; // <-- Stocke le POI utilisé
+    }
+  }
+
+  if (!latlng) {
+    const lat = origin.latlng.lat + (Math.random() - 0.5) * 0.05;
+    const lng = origin.latlng.lng + (Math.random() - 0.5) * 0.05;
+    latlng = L.latLng(lat, lng);
+  }
+
+  console.log(
+    `[Mission créée] ${selected.label} — POI utilisé :`,
+    usedPoi ? usedPoi : "aucun (coordonnée aléatoire)"
+  );
 
   const mission = {
     id: Date.now().toString(),
@@ -30,14 +126,9 @@ function createMission() {
     xp: selected.xp,
     reward: selected.reward,
     minLevel: selected.minLevel,
-    duration:
-      typeof selected.duration === "number" && selected.duration >= 0
-        ? selected.duration
-        : 0,
+    duration: typeof selected.duration === "number" ? selected.duration : 0,
     durationMs:
-      typeof selected.durationMs === "number" && selected.durationMs >= 0
-        ? selected.durationMs
-        : 0,
+      typeof selected.durationMs === "number" ? selected.durationMs : 0,
     vehicles: [],
     position: latlng,
     marker: null,
@@ -46,26 +137,40 @@ function createMission() {
     solutionType: selected.type,
     sourceType: realType,
     victims: generateVictims(selected),
-    startTime: Date.now(), // ✅ c'est ici que tu le déclares correctement
+    startTime: Date.now(),
   };
 
   const li = document.createElement("li");
   li.classList.add("non-lancee");
   li.innerHTML = `
-  <h3>${mission.label}</h3>
-  <p>
-    <span class="mission-status">Appel non traité</span>
-    <span class="mission-timer">Depuis 00:00:00</span>
-  </p>
-  <button onclick="openCallModal('${mission.id}')">Traiter</button>
-`;
-
+    <h3>${mission.label}</h3>
+    <p>
+      <span class="mission-status">Appel non traité</span>
+      <span class="mission-timer">Depuis 00:00:00</span>
+    </p>
+    <button onclick="openCallModal('${mission.id}')">Traiter</button>
+  `;
   mission.timerElement = li.querySelector(".mission-timer");
-
   mission.domElement = li;
 
   missionList.appendChild(li);
   missions.push(mission);
+
+  const icon = L.icon({
+    iconUrl: "assets/icons/mission.png",
+    iconSize: [28, 28],
+    iconAnchor: [14, 28],
+  });
+
+  const marker = L.marker(latlng, { icon })
+    .addTo(map)
+    .bindPopup(() => {
+      return (
+        mission.domElement?.cloneNode(true) || "<em>Pas d’info mission</em>"
+      );
+    });
+
+  mission.marker = marker;
 
   if (soundEnabled) {
     const sound = document.getElementById("mission-sound");
@@ -2018,8 +2123,8 @@ function toggleMissionGeneration() {
 
   const icon = document.getElementById("mission-toggle");
   icon.title = missionAutoEnabled
-    ? "Auto-génération activée"
-    : "Auto-génération désactivée";
+    ? "Désactiver les appels automatiques"
+    : "Activer les appels automatiques";
   icon.classList.toggle("paused", !missionAutoEnabled);
 }
 

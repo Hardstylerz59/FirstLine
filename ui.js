@@ -585,7 +585,10 @@ document.getElementById("reveal-address-btn").addEventListener("click", () => {
       .addTo(map)
       .bindPopup(() => {
         // Cloner proprement le DOM déjà mis à jour par updateMissionButton
-        return mission.domElement.cloneNode(true);
+        return (
+          currentCallMission.domElement?.cloneNode(true) ||
+          "<em>Chargement…</em>"
+        );
       });
 
     currentCallMission.marker = mk;
