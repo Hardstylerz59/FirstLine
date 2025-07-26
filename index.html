@@ -21,6 +21,12 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   </head>
 
+  <audio
+    id="mission-sound"
+    src="assets/sounds/sonnerie.mp3"
+    preload="auto"
+  ></audio>
+
   <body>
     <!-- ========== CONNEXION & INSCRIPTION ========== -->
     <div id="auth-box" class="auth-container">
@@ -93,7 +99,16 @@
           <div id="missions-panel">
             <h2 class="interventions-header">
               Interventions
-              <span id="mission-toggle" title="Auto-génération activée"></span>
+              <div class="header-controls">
+                <span
+                  id="sound-toggle"
+                  title="Activer/désactiver le son"
+                ></span>
+                <span
+                  id="mission-toggle"
+                  title="Activer/désactiver les appels automatiques"
+                ></span>
+              </div>
             </h2>
 
             <div id="history-button-wrapper">

@@ -8,11 +8,7 @@ function createMission() {
   const list = MISSION_TYPES[realType] || [];
   if (list.length === 0) return;
 
-  // Pas besoin de minLevel dans la base, car il va être généré maintenant !
-  // Donc on va d'abord enrichir toutes les missions de cette liste selon le niveau du joueur :
   const missionsEnriched = list.map((m) => enrichMissionBase(m, realType));
-
-  // Puis filtrer sur minLevel :
   const missionsEligible = missionsEnriched.filter(
     (m) => player.level >= m.minLevel
   );
@@ -49,17 +45,32 @@ function createMission() {
     dialogue: selected.dialogue,
     solutionType: selected.type,
     sourceType: realType,
+    victims: generateVictims(selected),
+    startTime: Date.now(), // ✅ c'est ici que tu le déclares correctement
   };
-
-  mission.victims = generateVictims(selected);
 
   const li = document.createElement("li");
   li.classList.add("non-lancee");
-  li.innerHTML = `<h3>${mission.label}</h3><p>Appel non traité</p><button onclick="openCallModal('${mission.id}')">Traiter</button>`;
-  mission.domElement = li;
-  missionList.appendChild(li);
+  li.innerHTML = `
+  <h3>${mission.label}</h3>
+  <p>
+    <span class="mission-status">Appel non traité</span>
+    <span class="mission-timer">Depuis 00:00:00</span>
+  </p>
+  <button onclick="openCallModal('${mission.id}')">Traiter</button>
+`;
 
+  mission.timerElement = li.querySelector(".mission-timer");
+
+  mission.domElement = li;
+
+  missionList.appendChild(li);
   missions.push(mission);
+
+  if (soundEnabled) {
+    const sound = document.getElementById("mission-sound");
+    if (sound) sound.play().catch(() => {});
+  }
 }
 
 function finishMission(mission) {
@@ -2015,6 +2026,19 @@ function toggleMissionGeneration() {
 document
   .getElementById("mission-toggle")
   .addEventListener("click", toggleMissionGeneration);
+
+let soundEnabled = true;
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  const icon = document.getElementById("sound-toggle");
+  icon.classList.toggle("muted", !soundEnabled);
+  icon.title = soundEnabled ? "Son activé" : "Son désactivé";
+
+  scheduleAutoSave(); // 👈 ajoute ceci pour enregistrer l’état
+}
+
+document.getElementById("sound-toggle").addEventListener("click", toggleSound);
 
 // intervale existant à modifier :
 setInterval(createMissionSafely, 3000);

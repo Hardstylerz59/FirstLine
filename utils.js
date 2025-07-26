@@ -1241,3 +1241,20 @@ function clearSelectedSyncedStatus() {
     el.style.color = "";
   });
 }
+
+setInterval(() => {
+  const now = Date.now();
+  missions.forEach((m) => {
+    if (!m.active && m.startTime && m.timerElement) {
+      const diff = Math.floor((now - m.startTime) / 1000);
+      const h = Math.floor(diff / 3600)
+        .toString()
+        .padStart(2, "0");
+      const mns = Math.floor((diff % 3600) / 60)
+        .toString()
+        .padStart(2, "0");
+      const s = (diff % 60).toString().padStart(2, "0");
+      m.timerElement.textContent = `Depuis ${h}:${mns}:${s}`;
+    }
+  });
+}, 1000);

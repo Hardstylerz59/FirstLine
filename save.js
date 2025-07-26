@@ -186,6 +186,7 @@ async function saveState() {
     version: SAVE_VERSION,
     player,
     history,
+    soundEnabled, // 👈 ici
     buildings: buildings.map((b) => ({
       id: b.id,
       name: b.name,
@@ -319,6 +320,14 @@ async function loadState() {
   }
 
   const state = data.data;
+  if (typeof state.soundEnabled === "boolean") {
+    soundEnabled = state.soundEnabled;
+    const icon = document.getElementById("sound-toggle");
+    if (icon) {
+      icon.classList.toggle("muted", !soundEnabled);
+      icon.title = soundEnabled ? "Son activé" : "Son désactivé";
+    }
+  }
   window.RESTORE_MODE = true;
 
   // 🔄 Reset total de l'UI et des données
@@ -479,9 +488,15 @@ async function loadState() {
   // 🚨 Restauration des missions
   for (const ms of state.missions) {
     const li = document.createElement("li");
-    li.innerHTML = `<h3>${ms.label}</h3><p>${
-      ms.address || "Appel non traité"
-    }</p><button onclick="openCallModal('${ms.id}')">Traiter</button>`;
+    li.innerHTML = `
+      <h3>${ms.label}</h3>
+      <p>
+        <span class="mission-status">${ms.address || "Appel non traité"}</span>
+        <span class="mission-timer">Depuis 00:00:00</span>
+      </p>
+      <button onclick="openCallModal('${ms.id}')">Traiter</button>
+    `;
+
     missionList.appendChild(li);
 
     const icon = L.icon({
@@ -520,7 +535,10 @@ async function loadState() {
       vehicles: ms.vehicles ?? [],
       victims: ms.victims || [],
       dispatched: [],
+      startTime: ms.startTime || Date.now(),
     };
+
+    mission.timerElement = li.querySelector(".mission-timer");
 
     if (Array.isArray(ms.dispatched)) {
       for (const d of ms.dispatched) {

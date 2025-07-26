@@ -1433,3 +1433,37 @@ th.sorted {
 #mission-toggle.paused::after {
   background-color: crimson; /* paused */
 }
+
+.header-controls {
+  display: flex;
+  gap: 10px;
+}
+
+#sound-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  width: 24px;
+  height: 24px;
+  position: relative;
+}
+
+#sound-toggle::before {
+  content: "🔊";
+}
+
+#sound-toggle.muted::before {
+  content: "🔇";
+}
+
+.mission-timer {
+  margin-left: 10px;
+  font-size: 0.9em;
+  color: #000000;
+}
+
+.mission-status {
+  font-weight: normal;
+}
