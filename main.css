@@ -1509,3 +1509,9 @@ th.sorted {
 .hidden {
   display: none !important;
 }
+
+#loader-progress {
+  transition: all 0.2s ease;
+  font-weight: bold;
+  font-size: 1.2em;
+}

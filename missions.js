@@ -1,71 +1,12 @@
-const buildingPoisMap = new Map();
-
 async function preloadAllPOIs() {
   const loader = document.getElementById("loader-pois");
   loader.classList.remove("hidden");
 
   for (const building of buildings) {
-    await fetchPOIsForBuilding(building, [
-      "shop",
-      "amenity",
-      "building",
-      "tourism",
-      "landuse",
-      "natural",
-      "highway",
-      "leisure",
-      "man_made",
-      "railway",
-      "public_transport",
-    ]);
+    await getOrFetchPOIsForBuilding(building); // Appel à la fonction dans save.js
   }
 
   loader.classList.add("hidden");
-}
-
-async function fetchPOIsForBuilding(building, tags = []) {
-  const lat = building.latlng.lat;
-  const lng = building.latlng.lng;
-  const radius = 1000;
-
-  const filters = tags
-    .map(
-      (tag) => `
-      node["${tag}"](around:${radius},${lat},${lng});
-      way["${tag}"](around:${radius},${lat},${lng});
-      relation["${tag}"](around:${radius},${lat},${lng});
-    `
-    )
-    .join("\n");
-
-  const query = `
-    [out:json][timeout:25];
-    (
-      ${filters}
-    );
-    out center;
-  `;
-
-  const url =
-    "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
-
-  try {
-    const res = await fetch(url);
-    const json = await res.json();
-    const elements = json.elements
-      .filter((el) => el.tags)
-      .map((el) => ({
-        lat: el.lat ?? el.center?.lat,
-        lng: el.lon ?? el.center?.lon,
-        tags: el.tags,
-      }))
-      .filter((el) => el.lat && el.lng);
-
-    buildingPoisMap.set(building.id, elements);
-  } catch (e) {
-    console.warn("Erreur chargement POIs OSM", e);
-    buildingPoisMap.set(building.id, []);
-  }
 }
 
 function createMission() {

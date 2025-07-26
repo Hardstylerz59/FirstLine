@@ -6,6 +6,94 @@ const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVoY294Z3RlcHZvbmtvc3F4dGNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNTUwMzIsImV4cCI6MjA2MjczMTAzMn0.Liz6UAVxyhsTtRyrrpcNCHnkIj6c8l00ZQYCeMDZpYY";
 const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+const buildingPoisMap = new Map();
+
+async function getOrFetchPOIsForBuilding(building) {
+  const existing = await client
+    .from("building_pois")
+    .select("pois")
+    .eq("building_id", building.id)
+    .single();
+
+  if (existing.data) {
+    buildingPoisMap.set(building.id, existing.data.pois);
+    return;
+  }
+
+  // Si pas trouvé : appel Overpass
+  const pois = await fetchPOIsFromOverpass(building);
+  buildingPoisMap.set(building.id, pois);
+
+  // Et on les stocke
+  await client.from("building_pois").upsert(
+    [
+      {
+        building_id: building.id,
+        pois,
+      },
+    ],
+    { onConflict: "building_id" }
+  );
+}
+
+async function fetchPOIsFromOverpass(building) {
+  const lat = building.latlng.lat;
+  const lng = building.latlng.lng;
+  const radius = 2000;
+  const tags = [
+    "shop",
+    "amenity",
+    "building",
+    "tourism",
+    "landuse",
+    "natural",
+    "highway",
+    "leisure",
+    "man_made",
+    "railway",
+    "public_transport",
+  ];
+
+  const filters = tags
+    .map(
+      (tag) => `
+      node["${tag}"](around:${radius},${lat},${lng});
+      way["${tag}"](around:${radius},${lat},${lng});
+      relation["${tag}"](around:${radius},${lat},${lng});
+    `
+    )
+    .join("\n");
+
+  const query = `
+    [out:json][timeout:25];
+    (
+      ${filters}
+    );
+    out center;
+  `;
+
+  const url =
+    "https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(query);
+
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+    const elements = json.elements
+      .filter((el) => el.tags)
+      .map((el) => ({
+        lat: el.lat ?? el.center?.lat,
+        lng: el.lon ?? el.center?.lon,
+        tags: el.tags,
+      }))
+      .filter((el) => el.lat && el.lng);
+
+    return elements;
+  } catch (e) {
+    console.warn("Erreur chargement POIs OSM", e);
+    return [];
+  }
+}
+
 // ⚙️ Utilitaires d'authentification utilisateur
 async function getCurrentUserId() {
   const { data } = await client.auth.getUser();

@@ -268,19 +268,19 @@ function enrichMissionBase(mission, realType) {
   } else if (nbVehicules === 2) {
     xp = Math.floor(Math.random() * 5) + 12;
     reward = Math.floor(Math.random() * 2001) + 4000;
-    minLevel = 3;
+    minLevel = 1;
     duration = (Math.floor(Math.random() * 2001) + 7000) * 3; // 21000–27000
   } else if (nbVehicules >= 3) {
     xp = Math.floor(Math.random() * 8) + 18;
     reward = Math.floor(Math.random() * 6501) + 7500;
-    minLevel = 5;
+    minLevel = 1;
     duration = (Math.floor(Math.random() * 3001) + 9000) * 3; // 27000–36000
   }
   // Exceptionnel/catastrophe
   if (mission.type.startsWith("rare_") || reward > 20000) {
     xp = Math.floor(Math.random() * 11) + 30;
     reward = Math.floor(Math.random() * 35001) + 25000;
-    minLevel = 8;
+    minLevel = 1;
     duration = (Math.floor(Math.random() * 10001) + 15000) * 3; // 45000–75000
   }
   // Si la mission avait déjà une duration > à la durée max, tu gardes celle du scénario

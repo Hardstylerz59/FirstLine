@@ -120,6 +120,8 @@ map.on("click", (e) => {
   building.marker = marker;
   buildings.push(building);
 
+  getOrFetchPOIsForBuilding(building);
+
   document.getElementById("map").classList.remove("add-cursor");
   const confirmBtn = document.getElementById("confirm-add-building");
   if (confirmBtn) confirmBtn.disabled = false;
