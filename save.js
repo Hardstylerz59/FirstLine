@@ -40,7 +40,7 @@ async function getOrFetchPOIsForBuilding(building) {
 async function fetchPOIsFromOverpass(building) {
   const lat = building.latlng.lat;
   const lng = building.latlng.lng;
-  const radius = 2000;
+  const radius = 5000;
   const tags = [
     "shop",
     "amenity",

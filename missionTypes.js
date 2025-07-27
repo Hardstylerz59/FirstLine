@@ -268,19 +268,19 @@ function enrichMissionBase(mission, realType) {
   } else if (nbVehicules === 2) {
     xp = Math.floor(Math.random() * 5) + 12;
     reward = Math.floor(Math.random() * 2001) + 4000;
-    minLevel = 1;
+    minLevel = 3;
     duration = (Math.floor(Math.random() * 2001) + 7000) * 3; // 21000–27000
   } else if (nbVehicules >= 3) {
     xp = Math.floor(Math.random() * 8) + 18;
     reward = Math.floor(Math.random() * 6501) + 7500;
-    minLevel = 1;
+    minLevel = 5;
     duration = (Math.floor(Math.random() * 3001) + 9000) * 3; // 27000–36000
   }
   // Exceptionnel/catastrophe
   if (mission.type.startsWith("rare_") || reward > 20000) {
     xp = Math.floor(Math.random() * 11) + 30;
     reward = Math.floor(Math.random() * 35001) + 25000;
-    minLevel = 1;
+    minLevel = 8;
     duration = (Math.floor(Math.random() * 10001) + 15000) * 3; // 45000–75000
   }
   // Si la mission avait déjà une duration > à la durée max, tu gardes celle du scénario
@@ -299,6 +299,186 @@ function enrichMissionBase(mission, realType) {
 
 const MISSION_TYPES = {
   caserne: [
+    {
+      type: "urgence_medicale_01",
+      label: "Personne inconsciente dans un parc",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Y’a quelqu’un allongé par terre dans le parc, il bouge plus du tout !",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["leisure", "park", "natural"],
+    },
+    {
+      type: "urgence_medicale_02",
+      label: "Chute d'une personne âgée",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Ma voisine est tombée dans l’escalier, elle dit qu’elle a super mal à la hanche.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["building", "residential", "steps"],
+    },
+    {
+      type: "urgence_medicale_03",
+      label: "Malaise dans un supermarché",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Un client s’est effondré entre les rayons, il respire mais il est tout pâle.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["shop", "supermarket", "retail"],
+    },
+    {
+      type: "urgence_medicale_04",
+      label: "Crise d’épilepsie dans la rue",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Il fait des mouvements bizarres, il tombe au sol et tremble, je crois que c’est une crise !",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["highway", "footway", "crossing"],
+    },
+    {
+      type: "urgence_medicale_05",
+      label: "Forte douleur thoracique",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Mon mari dit qu’il a super mal à la poitrine, il transpire et il arrive plus à parler.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["building", "residential"],
+    },
+    {
+      type: "urgence_medicale_06",
+      label: "Personne inconsciente dans un arrêt de bus",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Y’a un gars allongé sur le banc à l’arrêt, je crois qu’il respire mais il ne réagit pas.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["public_transport", "bench", "highway"],
+    },
+    {
+      type: "urgence_medicale_07",
+      label: "Vomissements et douleurs abdominales",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Ma fille a super mal au ventre et elle vomit depuis ce matin, elle tient plus debout.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["building", "residential", "school"],
+    },
+    {
+      type: "urgence_medicale_08",
+      label: "Blessure sur un chantier",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Un ouvrier s’est coupé avec une disqueuse, ça saigne beaucoup !",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["landuse", "industrial", "construction"],
+    },
+    {
+      type: "urgence_medicale_09",
+      label: "Malaise dans un restaurant",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Un client vient de s’écrouler, on l’a mis en PLS mais il parle pas.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["amenity", "restaurant", "cafe"],
+    },
+    {
+      type: "urgence_medicale_001",
+      label: "Personne blessée à vélo",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Un cycliste s’est fait renverser, il bouge un peu mais il crie qu’il a super mal à la jambe.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["highway", "cycleway", "crossing"],
+    },
+    {
+      type: "urgence_medicale_10",
+      label: "Crise d’épilepsie dans un parc",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Un jeune homme convulse au sol dans un parc public, des passants tentent de le maintenir en sécurité.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["leisure", "park", "place"], // parcs publics
+    },
+    {
+      type: "urgence_medicale_11",
+      label: "Perte de connaissance dans un supermarché",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Un homme s’est effondré sans raison au rayon surgelé, il ne réagit plus malgré les appels.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["shop", "supermarket"], // magasins alimentaires
+    },
+    {
+      type: "urgence_medicale_12",
+      label: "Femme enceinte avec douleurs intenses",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Une femme enceinte de 8 mois ressent des douleurs abdominales violentes et a perdu du liquide amniotique.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["building", "residential"], // peut arriver à domicile
+    },
+    {
+      type: "urgence_medicale_13",
+      label: "Enfant avec forte fièvre et convulsions",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Un enfant de 3 ans tremble de tout son corps, il a plus de 40°C de fièvre depuis ce matin.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["building", "residential"], // domicile
+    },
+    {
+      type: "urgence_medicale_14",
+      label: "Personne âgée tombée dans sa salle de bain",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Ma mère âgée de 86 ans est tombée en se levant et reste au sol, elle ne semble pas blessée mais ne peut pas bouger.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["building", "residential"], // logement
+    },
+    {
+      type: "urgence_medicale_15",
+      label: "Douleurs thoraciques dans un bureau",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Un collègue se tient la poitrine et a du mal à respirer, il dit que la douleur s’étend à son bras gauche.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["office", "building", "commercial"], // bureaux
+    },
+    {
+      type: "urgence_medicale_16",
+      label: "Détresse respiratoire chez un asthmatique",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Mon fils asthmatique n’arrive plus à respirer correctement malgré sa ventoline, il devient bleu.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["building", "residential"], // domicile
+    },
+    {
+      type: "urgence_medicale_17",
+      label: "Troubles de la parole et paralysie soudaine",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Mon père a soudain du mal à parler et ne peut plus bouger son bras droit, cela ne fait que quelques minutes.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["building", "residential"], // domicile
+    },
+    {
+      type: "urgence_medicale_18",
+      label: "Victime d'un malaise dans la rue",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Une femme titube, elle est tombée sur le trottoir et ne parvient plus à se relever, elle semble confuse.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["highway", "footway", "place"], // voie publique, trottoir, place
+    },
+    {
+      type: "urgence_medicale_19",
+      label: "Saignement abondant après une chute",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Un enfant est tombé d’un muret et saigne abondamment du front, il est conscient mais en panique.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["playground", "leisure", "park", "place"], // jeux, lieux publics
+    },
     {
       type: "urgence_medicale_20",
       label: "Chute dans la rue sans blessure grave",
@@ -433,6 +613,97 @@ const MISSION_TYPES = {
       victimCount: { min: 1, max: 1 },
       poiTags: ["amenity", "marketplace", "square", "bench"],
     },
+    {
+      type: "urgence_medicale_35",
+      label: "Femme enceinte sur le point d'accoucher",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Ma femme a des contractions toutes les deux minutes, ça devient urgent là !",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["building", "residential", "amenity"],
+    },
+    {
+      type: "urgence_medicale_36",
+      label: "Enfant tombé du toboggan",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Mon fils est tombé du haut du toboggan, il pleure et dit qu’il peut plus bouger le bras.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["leisure", "playground"],
+    },
+    {
+      type: "urgence_medicale_37",
+      label: "Intoxication dans une cantine",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Plusieurs enfants se plaignent de maux de ventre après le repas, certains vomissent.",
+      victimCount: { min: 2, max: 4 },
+      poiTags: ["amenity", "school", "canteen"],
+    },
+    {
+      type: "urgence_medicale_38",
+      label: "Chute sur chantier",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Un gars est tombé d’un échafaudage, il bouge pas et il saigne à la tête !",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["landuse", "construction", "building"],
+    },
+    {
+      type: "urgence_medicale_39",
+      label: "Personne désorientée dans un hall",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Y’a une dame âgée dans le hall, elle a l’air perdue et elle ne sait plus où elle est.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["building", "entrance", "amenity"],
+    },
+    {
+      type: "urgence_medicale_40",
+      label: "Allergie alimentaire au fast-food",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Mon pote a mangé un truc, maintenant il gonfle et il dit qu’il arrive plus à respirer !",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["amenity", "fast_food", "restaurant"],
+    },
+    {
+      type: "urgence_medicale_41",
+      label: "Crise d’asthme dans un collège",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Un élève fait une crise d’asthme, il a oublié sa ventoline et il panique.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["amenity", "school", "college"],
+    },
+    {
+      type: "urgence_medicale_42",
+      label: "Malaise en salle de sport",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Un gars s’est effondré en courant sur le tapis, il a du mal à parler.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["leisure", "sports_centre", "fitness_centre"],
+    },
+    {
+      type: "urgence_medicale_43",
+      label: "Trouble psychiatrique en gare",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Y’a un homme qui crie tout seul et qui menace les passants, il parle de voix dans sa tête.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["railway", "station", "public_transport"],
+    },
+    {
+      type: "urgence_medicale_44",
+      label: "Chute à vélo sur piste cyclable",
+      vehicles: [{ type: "VSAV" }],
+      dialogue:
+        "Un cycliste a glissé sur la piste, il a du sang au visage et il bouge pas trop.",
+      victimCount: { min: 1, max: 1 },
+      poiTags: ["highway", "cycleway", "path"],
+    },
+
     {
       type: "rare_01",
       label: "Effondrement d’immeuble",
@@ -906,98 +1177,6 @@ const MISSION_TYPES = {
         "Un incendie s’est déclenché dans une boutique d’un centre commercial, les clients évacuent en panique.",
       victimCount: { min: 1, max: 4 },
       poiTags: ["shop", "mall", "retail"],
-    },
-
-    // --- INTERVENTIONS VSAV SEUL, DURATION 0 ---
-    {
-      type: "urgence_medicale_10",
-      label: "Crise d’épilepsie dans un parc",
-      vehicles: [{ type: "VSAV" }],
-      dialogue:
-        "Un jeune homme convulse au sol dans un parc public, des passants tentent de le maintenir en sécurité.",
-      victimCount: { min: 1, max: 1 },
-      poiTags: ["leisure", "park", "place"], // parcs publics
-    },
-    {
-      type: "urgence_medicale_11",
-      label: "Perte de connaissance dans un supermarché",
-      vehicles: [{ type: "VSAV" }],
-      dialogue:
-        "Un homme s’est effondré sans raison au rayon surgelé, il ne réagit plus malgré les appels.",
-      victimCount: { min: 1, max: 1 },
-      poiTags: ["shop", "supermarket"], // magasins alimentaires
-    },
-    {
-      type: "urgence_medicale_12",
-      label: "Femme enceinte avec douleurs intenses",
-      vehicles: [{ type: "VSAV" }],
-      dialogue:
-        "Une femme enceinte de 8 mois ressent des douleurs abdominales violentes et a perdu du liquide amniotique.",
-      victimCount: { min: 1, max: 1 },
-      poiTags: ["building", "residential"], // peut arriver à domicile
-    },
-    {
-      type: "urgence_medicale_13",
-      label: "Enfant avec forte fièvre et convulsions",
-      vehicles: [{ type: "VSAV" }],
-      dialogue:
-        "Un enfant de 3 ans tremble de tout son corps, il a plus de 40°C de fièvre depuis ce matin.",
-      victimCount: { min: 1, max: 1 },
-      poiTags: ["building", "residential"], // domicile
-    },
-    {
-      type: "urgence_medicale_14",
-      label: "Personne âgée tombée dans sa salle de bain",
-      vehicles: [{ type: "VSAV" }],
-      dialogue:
-        "Ma mère âgée de 86 ans est tombée en se levant et reste au sol, elle ne semble pas blessée mais ne peut pas bouger.",
-      victimCount: { min: 1, max: 1 },
-      poiTags: ["building", "residential"], // logement
-    },
-    {
-      type: "urgence_medicale_15",
-      label: "Douleurs thoraciques dans un bureau",
-      vehicles: [{ type: "VSAV" }],
-      dialogue:
-        "Un collègue se tient la poitrine et a du mal à respirer, il dit que la douleur s’étend à son bras gauche.",
-      victimCount: { min: 1, max: 1 },
-      poiTags: ["office", "building", "commercial"], // bureaux
-    },
-    {
-      type: "urgence_medicale_16",
-      label: "Détresse respiratoire chez un asthmatique",
-      vehicles: [{ type: "VSAV" }],
-      dialogue:
-        "Mon fils asthmatique n’arrive plus à respirer correctement malgré sa ventoline, il devient bleu.",
-      victimCount: { min: 1, max: 1 },
-      poiTags: ["building", "residential"], // domicile
-    },
-    {
-      type: "urgence_medicale_17",
-      label: "Troubles de la parole et paralysie soudaine",
-      vehicles: [{ type: "VSAV" }],
-      dialogue:
-        "Mon père a soudain du mal à parler et ne peut plus bouger son bras droit, cela ne fait que quelques minutes.",
-      victimCount: { min: 1, max: 1 },
-      poiTags: ["building", "residential"], // domicile
-    },
-    {
-      type: "urgence_medicale_18",
-      label: "Victime d'un malaise dans la rue",
-      vehicles: [{ type: "VSAV" }],
-      dialogue:
-        "Une femme titube, elle est tombée sur le trottoir et ne parvient plus à se relever, elle semble confuse.",
-      victimCount: { min: 1, max: 1 },
-      poiTags: ["highway", "footway", "place"], // voie publique, trottoir, place
-    },
-    {
-      type: "urgence_medicale_19",
-      label: "Saignement abondant après une chute",
-      vehicles: [{ type: "VSAV" }],
-      dialogue:
-        "Un enfant est tombé d’un muret et saigne abondamment du front, il est conscient mais en panique.",
-      victimCount: { min: 1, max: 1 },
-      poiTags: ["playground", "leisure", "park", "place"], // jeux, lieux publics
     },
 
     // --- ACCIDENTS ---

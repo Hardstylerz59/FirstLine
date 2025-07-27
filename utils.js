@@ -8,9 +8,9 @@ const PATIENT_STAY_DURATION = {
 };
 
 window.GameUtils = {
-  EARLY_RESPONSE_WINDOW_MS: 60000, // 1 minute
+  EARLY_RESPONSE_WINDOW_MS: 30000, // 1 minute
   EARLY_RESPONSE_XP_BONUS: 10,
-  EARLY_RESPONSE_MONEY_BONUS: 100,
+  EARLY_RESPONSE_MONEY_BONUS: 500,
 
   applyEarlyResponseBonus: function (mission) {
     if (mission.firstDispatchedAt) return false;
