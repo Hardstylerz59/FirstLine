@@ -1515,3 +1515,12 @@ th.sorted {
   font-weight: bold;
   font-size: 1.2em;
 }
+
+.bonus-chip {
+  background-color: #ff5722;
+  color: white;
+  font-size: 0.75em;
+  padding: 2px 6px;
+  border-radius: 8px;
+  margin-left: 4px;
+}

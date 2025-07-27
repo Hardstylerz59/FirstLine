@@ -131,10 +131,14 @@ function finishMission(mission) {
   const historyList = document.getElementById("history-list");
   const historyItem = document.createElement("li");
   historyItem.classList.add("history-entry"); // Pour style uniforme
+  const bonusBadge = mission.firstDispatchedAt
+    ? `<span class="bonus-chip">+ bonus</span>`
+    : "";
+
   historyItem.innerHTML = `
-    <span class="history-entry-label">${mission.label} réussie</span>
-    <span class="history-entry-reward">+${mission.xp} XP, +${mission.reward}€</span>
-  `;
+  <span class="history-entry-label">${mission.label} réussie ${bonusBadge}</span>
+  <span class="history-entry-reward">+${mission.xp} XP, +${mission.reward}€</span>
+`;
   historyList.insertBefore(historyItem, historyList.firstChild); // Ajoute EN HAUT
 
   // Limite à 10 entrées
@@ -901,6 +905,10 @@ function dispatchMission(missionId) {
         "Ce véhicule est hors service et doit être réparé avant de repartir !"
       );
       return;
+    }
+
+    if (!mission.firstDispatchedAt) {
+      GameUtils.applyEarlyResponseBonus(mission);
     }
 
     engagedBuildings.add(building);

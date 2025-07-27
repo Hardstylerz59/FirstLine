@@ -7,6 +7,37 @@ const PATIENT_STAY_DURATION = {
   critical: 960000,
 };
 
+window.GameUtils = {
+  EARLY_RESPONSE_WINDOW_MS: 60000, // 1 minute
+  EARLY_RESPONSE_XP_BONUS: 10,
+  EARLY_RESPONSE_MONEY_BONUS: 100,
+
+  applyEarlyResponseBonus: function (mission) {
+    if (mission.firstDispatchedAt) return false;
+
+    const now = Date.now();
+    const delay = now - mission.startTime;
+    mission.firstDispatchedAt = now;
+
+    if (delay <= this.EARLY_RESPONSE_WINDOW_MS) {
+      mission.reward += this.EARLY_RESPONSE_MONEY_BONUS;
+      mission.xp += this.EARLY_RESPONSE_XP_BONUS;
+
+      const bonusMsg = `🚨 Réaction rapide : +${this.EARLY_RESPONSE_XP_BONUS} XP, +${this.EARLY_RESPONSE_MONEY_BONUS} €`;
+      mission.bonusMessage = bonusMsg;
+      console.log("🚨 Bonus de réaction rapide accordé !");
+
+      if (typeof showNotification === "function") {
+        showNotification("xp", bonusMsg); // ← On passe bien la chaîne directement ici
+      }
+
+      return true;
+    }
+
+    return false;
+  },
+};
+
 const PATIENT_STATUS_FR = {
   light: "Etat Léger",
   moderate: "Etat Grave",

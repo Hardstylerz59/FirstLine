@@ -82,6 +82,14 @@ function showNotification(type, message, duration = 4000) {
     });
   }
 
+  if (type === "xp") {
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.2 },
+    });
+  }
+
   setTimeout(() => {
     notif.classList.remove("visible");
     setTimeout(() => notif.remove(), 400);

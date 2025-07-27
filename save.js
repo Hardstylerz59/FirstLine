@@ -9,14 +9,15 @@ const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const buildingPoisMap = new Map();
 
 async function getOrFetchPOIsForBuilding(building) {
-  const existing = await client
+  const res = await client
     .from("building_pois")
     .select("pois")
     .eq("building_id", building.id)
-    .single();
+    .limit(1);
 
-  if (existing.data) {
-    buildingPoisMap.set(building.id, existing.data.pois);
+  const existing = res.data?.[0];
+  if (existing) {
+    buildingPoisMap.set(building.id, existing.pois);
     return;
   }
 
