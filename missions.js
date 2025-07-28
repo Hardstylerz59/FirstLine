@@ -1,21 +1,34 @@
-let isLoadingPOIs = true;
+let isLoadingPOIs = false;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function preloadAllPOIs() {
-  isLoadingPOIs = true; // ← Blocage activé
+  console.log("📍 Préchargement des POIs...");
 
+  const allPreloaded = buildings.every((b) => buildingPoisMap.has(b.id));
+  if (allPreloaded) {
+    console.log("✅ Tous les POIs sont déjà présents en cache. Aucun appel.");
+    return;
+  }
+
+  isLoadingPOIs = true;
   const loader = document.getElementById("loader-pois");
   loader.classList.remove("hidden");
 
   for (const building of buildings) {
     await getOrFetchPOIsForBuilding(building);
+    await sleep(200); // pour éviter toute surcharge
   }
 
   loader.classList.add("hidden");
-  isLoadingPOIs = false; // ← Fin du blocage
+  isLoadingPOIs = false;
 }
 
 function createMission() {
   if (missions.length >= buildings.length + 1 || buildings.length === 0) return;
+  let usedPoi = null;
 
   const origin = buildings[Math.floor(Math.random() * buildings.length)];
   const realType = ["cpi", "cs", "csp"].includes(origin.type)
@@ -494,11 +507,9 @@ function verifyMissionVehicles(mission) {
   if (!template) return;
 
   const requiredVehicles = template.vehicles;
-
   const arrivedCounts = {};
   mission.dispatched.forEach((d) => {
     const v = d.vehicle;
-    // Considère le VSAV comme "engagé" s'il est sur place OU en transport OU au CH OU retour
     const isEngagedStatus = ["al", "tr", "ch"].includes(v.status);
     if (isEngagedStatus) {
       arrivedCounts[v.type] = (arrivedCounts[v.type] || 0) + 1;
@@ -513,7 +524,6 @@ function verifyMissionVehicles(mission) {
     0
   );
 
-  // Retourner en rouge uniquement si aucun véhicule n'est arrivé ET aucun véhicule n'est en route
   if (arrivedCountTotal === 0 && !hasEngaged) {
     updateMissionStateClass(mission, "non-lancee");
     updateMissionButton(mission);
@@ -543,7 +553,6 @@ function verifyMissionVehicles(mission) {
     victimStatus = `<div>👤 Victimes : ${treated}/${total}</div>`;
   }
 
-  // === 📝 MAJ du contenu affiché ===
   let stateText = "";
 
   if (missingVehicles.length > 0) {
@@ -562,13 +571,42 @@ function verifyMissionVehicles(mission) {
         ", "
       )}</span>`;
   } else if (!mission.progressStarted && arrivedCountTotal > 0) {
-    // Tous les moyens sont sur place, n'affiche plus les véhicules, mais affiche l'état victimes si au moins un véhicule sur place
     stateText = victimStatus;
   } else if (mission.progressStarted && victimStatus) {
-    // Mission en cours : afficher état victimes
     stateText = victimStatus;
   } else {
     stateText = "";
+  }
+
+  if (template.waterNeeded) {
+    const totalEau = mission.dispatched
+      .filter((d) => d.vehicle.capacityEau)
+      .reduce((sum, d) => sum + d.vehicle.capacityEau, 0);
+
+    const missingEau = template.waterNeeded - totalEau;
+    const percent = Math.min(
+      100,
+      Math.floor((totalEau / template.waterNeeded) * 100)
+    );
+    const waterStatus = `
+  <div class="water-summary">
+    <div class="water-bar-container">
+      <div class="water-bar" style="width: ${percent}%;"></div>
+    </div>
+    <div class="water-text">${totalEau}/${template.waterNeeded} L</div>
+  </div>
+`;
+
+    stateText += waterStatus;
+    if (missingEau > 0) {
+      stateText += `<br><span style='color:red;'>🚨 Eau insuffisante – renforts nécessaires</span>`;
+      updateMissionStateClass(mission, "attente");
+      const p = mission.domElement.querySelector("p");
+      p.innerHTML = stateText;
+      p.style.display = "";
+      updateMissionButton(mission);
+      return;
+    }
   }
 
   const p = mission.domElement.querySelector("p");
@@ -582,9 +620,7 @@ function verifyMissionVehicles(mission) {
 
   const inTransit = hasEngaged;
 
-  // === 🎨 MAJ état CSS + bouton ===
   if (missingVehicles.length === 0) {
-    // Ajoute ce bloc pour vérifier les victimes
     const allVictimsReady =
       !mission.victims ||
       mission.victims.length === 0 ||
@@ -594,15 +630,11 @@ function verifyMissionVehicles(mission) {
 
     if (allVictimsReady) {
       updateMissionStateClass(mission, "en-cours");
-
       mission.awaitingProgress = false;
       startMissionProgress(mission);
     } else {
-      // Attendre que toutes les victimes soient traitées/transportées/laissées sur place
       updateMissionStateClass(mission, "attente");
-
-      mission.awaitingProgress = true; // ✅ <<<<<< ICI
-      // PAS de startMissionProgress ici !
+      mission.awaitingProgress = true;
     }
   } else if (inTransit) {
     updateMissionStateClass(mission, "transit");
@@ -612,7 +644,7 @@ function verifyMissionVehicles(mission) {
     updateMissionStateClass(mission, "non-lancee");
   }
 
-  updateMissionButton(mission); // 🔁 Gérer / Traiter
+  updateMissionButton(mission);
 }
 
 function checkMissionArrival(mission) {

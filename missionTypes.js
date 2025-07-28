@@ -943,6 +943,7 @@ const MISSION_TYPES = {
         "De la fumée s'échappe du troisième étage, des habitants font des signes à la fenêtre.",
       victimCount: { min: 1, max: 3 },
       poiTags: ["building", "apartments"],
+      waterNeeded: 5000,
     },
     {
       type: "inc_02",
@@ -952,6 +953,7 @@ const MISSION_TYPES = {
         "Un feu s'est déclaré dans un atelier de menuiserie, le propriétaire craint une propagation.",
       victimCount: { min: 0, max: 1 },
       poiTags: ["craft", "workshop", "building"],
+      waterNeeded: 5000,
     },
     {
       type: "inc_03",
@@ -967,6 +969,7 @@ const MISSION_TYPES = {
         "Un entrepôt industriel est totalement embrasé, des explosions sont entendues.",
       victimCount: { min: 0, max: 2 },
       poiTags: ["building", "warehouse", "industrial"],
+      waterNeeded: 5000,
     },
     {
       type: "inc_04",
@@ -976,6 +979,7 @@ const MISSION_TYPES = {
         "Un hangar agricole contenant du matériel et des animaux est en feu.",
       victimCount: { min: 0, max: 1 },
       poiTags: ["farmyard", "building", "agricultural"],
+      waterNeeded: 5000,
     },
     {
       type: "inc_05",
@@ -985,6 +989,7 @@ const MISSION_TYPES = {
         "Un compteur électrique a explosé dans la cave, la fumée envahit l'escalier.",
       victimCount: { min: 0, max: 1 },
       poiTags: ["building", "substation", "power"],
+      waterNeeded: 5000,
     },
     {
       type: "inc_06",
@@ -994,6 +999,7 @@ const MISSION_TYPES = {
         "Un bus urbain s'est embrasé en pleine circulation, tous les passagers ont été évacués.",
       victimCount: { min: 0, max: 2 },
       poiTags: ["highway", "bus_stop", "amenity"],
+      waterNeeded: 5000,
     },
     {
       type: "inc_07",
@@ -1003,6 +1009,7 @@ const MISSION_TYPES = {
         "Des flammes sortent du conduit de cheminée, le propriétaire a éteint le feu dans l'âtre.",
       victimCount: { min: 0, max: 0 },
       poiTags: ["building", "residential"],
+      waterNeeded: 5000,
     },
     {
       type: "inc_08",
@@ -1012,6 +1019,7 @@ const MISSION_TYPES = {
         "Une épaisse fumée sort des bouches d'aération d'un parking souterrain, plusieurs véhicules brûlent.",
       victimCount: { min: 0, max: 1 },
       poiTags: ["amenity", "parking", "underground"],
+      waterNeeded: 5000,
     },
 
     {
@@ -1022,6 +1030,7 @@ const MISSION_TYPES = {
         "Un tracteur est la proie des flammes dans un champ, le propriétaire est sur place.",
       victimCount: { min: 0, max: 1 },
       poiTags: ["landuse", "farmland", "agricultural"],
+      waterNeeded: 5000,
     },
     {
       type: "inc_12",
@@ -1037,6 +1046,7 @@ const MISSION_TYPES = {
         "Un hôtel prend feu au petit matin, plusieurs clients sont à secourir.",
       victimCount: { min: 2, max: 6 },
       poiTags: ["tourism", "hotel"],
+      waterNeeded: 5000,
     },
     {
       type: "inc_13",
@@ -1045,6 +1055,7 @@ const MISSION_TYPES = {
       dialogue: "Une voiture brûle sur un parking, aucun blessé apparent.",
       victimCount: { min: 0, max: 0 },
       poiTags: ["amenity", "parking"],
+      waterNeeded: 5000,
     },
     {
       type: "inc_14",
@@ -1053,6 +1064,7 @@ const MISSION_TYPES = {
       dialogue: "Une benne à ordures brûle sur le trottoir devant un immeuble.",
       victimCount: { min: 0, max: 0 },
       poiTags: ["building", "residential"],
+      waterNeeded: 5000,
     },
     {
       type: "inc_15",
@@ -1062,6 +1074,7 @@ const MISSION_TYPES = {
         "Un feu de broussailles menace un lotissement, les habitants arrosent leurs jardins.",
       victimCount: { min: 0, max: 1 },
       poiTags: ["natural", "scrub", "landuse", "grass"],
+      waterNeeded: 5000,
     },
     {
       type: "incendie_0",
@@ -1076,6 +1089,7 @@ const MISSION_TYPES = {
         "Une maison fume intensément au niveau du salon, les voisins disent que quelqu’un est encore à l’intérieur.",
       victimCount: { min: 1, max: 2 },
       poiTags: ["building", "house"],
+      waterNeeded: 5000,
     },
     {
       type: "incendie_1",
@@ -1090,6 +1104,7 @@ const MISSION_TYPES = {
         "Un important dégagement de fumée provient du dernier étage d’un immeuble, plusieurs personnes sont bloquées sur le balcon.",
       victimCount: { min: 2, max: 4 },
       poiTags: ["building", "apartments"],
+      waterNeeded: 5000,
     },
     {
       type: "incendie_2",
@@ -1099,6 +1114,7 @@ const MISSION_TYPES = {
         "Un feu s’est déclaré dans un garage attenant à une maison, il y aurait des bouteilles de gaz à l’intérieur.",
       victimCount: { min: 0, max: 1 },
       poiTags: ["building", "garage"],
+      waterNeeded: 5000,
     },
     {
       type: "incendie_3",
@@ -1108,6 +1124,7 @@ const MISSION_TYPES = {
         "Un poids lourd est en feu sur la voie rapide, le chauffeur est sorti mais les flammes atteignent la cabine.",
       victimCount: { min: 1, max: 2 },
       poiTags: ["highway", "motorway"],
+      waterNeeded: 5000,
     },
     {
       type: "incendie_4",
@@ -1122,6 +1139,7 @@ const MISSION_TYPES = {
         "Une épaisse fumée sort d’un entrepôt industriel contenant des produits inflammables, le personnel est évacué.",
       victimCount: { min: 0, max: 3 },
       poiTags: ["landuse", "industrial", "building", "warehouse"],
+      waterNeeded: 5000,
     },
     {
       type: "incendie_5",
@@ -1136,6 +1154,7 @@ const MISSION_TYPES = {
         "Une friteuse a pris feu et les flammes se sont propagées au mobilier, le résident est sorti juste à temps.",
       victimCount: { min: 0, max: 1 },
       poiTags: ["building", "apartments"],
+      waterNeeded: 5000,
     },
     {
       type: "incendie_6",
@@ -1145,6 +1164,7 @@ const MISSION_TYPES = {
         "Un feu de broussailles est attisé par le vent et s’approche dangereusement d’un lotissement.",
       victimCount: { min: 0, max: 1 },
       poiTags: ["natural", "scrub"],
+      waterNeeded: 5000,
     },
     {
       type: "incendie_7",
@@ -1154,6 +1174,7 @@ const MISSION_TYPES = {
         "Une voiture brûle dans un parking souterrain, de la fumée épaisse s’échappe des bouches d’aération.",
       victimCount: { min: 0, max: 1 },
       poiTags: ["amenity", "parking", "underground"],
+      waterNeeded: 5000,
     },
     {
       type: "incendie_8",
@@ -1163,6 +1184,7 @@ const MISSION_TYPES = {
         "Une benne à déchets industriels a pris feu en pleine rue, la chaleur menace les vitrines proches.",
       victimCount: { min: 0, max: 0 },
       poiTags: ["landuse", "commercial"],
+      waterNeeded: 5000,
     },
     {
       type: "incendie_9",
@@ -1177,6 +1199,7 @@ const MISSION_TYPES = {
         "Un incendie s’est déclenché dans une boutique d’un centre commercial, les clients évacuent en panique.",
       victimCount: { min: 1, max: 4 },
       poiTags: ["shop", "mall", "retail"],
+      waterNeeded: 5000,
     },
 
     // --- ACCIDENTS ---
@@ -1405,6 +1428,7 @@ const MISSION_TYPES = {
         "Un car scolaire a pris feu après une collision, de nombreux enfants sont à évacuer et à prendre en charge.",
       victimCount: { min: 6, max: 20 },
       poiTags: ["highway", "school"], // routes proches d'écoles
+      waterNeeded: 5000,
     },
     {
       type: "avp_09",
@@ -1538,6 +1562,7 @@ const MISSION_TYPES = {
         "Un feu de conteneurs s’est propagé à une façade d’immeuble, des jeunes sont vus près des flammes.",
       victimCount: { min: 0, max: 1 },
       poiTags: ["building", "amenity", "recycling"],
+      waterNeeded: 5000,
     },
     {
       type: "enfant_ferme_vehicule",

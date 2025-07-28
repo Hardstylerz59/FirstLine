@@ -8,7 +8,98 @@ const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const buildingPoisMap = new Map();
 
+function createBuildingFromState(b) {
+  const latlng = b.latlng;
+  const building = {
+    ...b,
+    latlng,
+    marker: null,
+    vehicles: [],
+  };
+
+  const safeId = getSafeId(building);
+  const labelPrefix =
+    b.type === "hopital" ? "CH" : b.type === "police" ? "Commissariat" : "CIS";
+
+  const icon = L.icon({
+    iconUrl: getIconForType(b.type),
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+  });
+
+  const li = document.createElement("li");
+  li.classList.add("building-block", b.type);
+  li.id = `building-block-${safeId}`;
+  li.innerHTML = `
+    <div class="building-header">
+      <div class="building-title">
+        <strong>${labelPrefix} ${b.name}</strong>
+        <div class="staff-info"></div>
+        ${
+          b.type === "hopital"
+            ? `<p class="patient-info">🛏 Patients : <span id="capacity-${safeId}">0/0</span></p>`
+            : ""
+        }
+        <p class="building-type-label hidden" id="type-${safeId}">Type : ${b.type.toUpperCase()}</p>
+      </div>
+      <button onclick="openBuildingModal('${safeId}')">Gérer</button>
+      <button class="toggle-veh-btn" onclick="toggleVehicleList('${safeId}', this)">▼</button>
+    </div>
+    <ul id="veh-${safeId}" class="vehicle-list"></ul>
+  `;
+
+  buildingList.appendChild(li);
+
+  const marker = L.marker(latlng, { icon })
+    .addTo(map)
+    .bindPopup(
+      `
+      <b>${labelPrefix} ${b.name}</b><br>
+      <button id="popup-manage-${safeId}" class="popup-manage-btn">Gérer</button>
+    `
+    )
+    .bindTooltip(`${labelPrefix} ${b.name}`, {
+      permanent: false,
+      direction: "top",
+    });
+
+  marker.on("popupopen", function () {
+    const btn = document.getElementById(`popup-manage-${safeId}`);
+    if (btn) btn.onclick = () => openBuildingModal(safeId);
+  });
+
+  building.marker = marker;
+  buildings.push(building);
+  // Met à jour les infos de personnel après création
+  const span = li.querySelector(".staff-info");
+  if (
+    building.type === "cpi" ||
+    building.type === "cs" ||
+    building.type === "csp"
+  ) {
+    span.innerHTML = `
+    Pro: <span id="staff-pro-avail-${safeId}">${
+      building.personnelAvailablePro ?? 0
+    }</span> /
+         <span id="staff-pro-${safeId}">${building.personnelPro ?? 0}</span>
+    Vol: <span id="staff-vol-avail-${safeId}">${
+      building.personnelAvailableVol ?? 0
+    }</span> /
+         <span id="staff-vol-${safeId}">${building.personnelVol ?? 0}</span>
+  `;
+  } else {
+    span.innerHTML = `(<span id="staff-avail-${safeId}">${
+      building.personnelAvailable ?? 0
+    }</span> /
+                     <span id="staff-${safeId}">${
+      building.personnel ?? 0
+    }</span>)`;
+  }
+}
+
 async function getOrFetchPOIsForBuilding(building) {
+  if (buildingPoisMap.has(building.id)) return;
+
   const res = await client
     .from("building_pois")
     .select("pois")
@@ -16,28 +107,18 @@ async function getOrFetchPOIsForBuilding(building) {
     .limit(1);
 
   const existing = res.data?.[0];
-  if (existing) {
+  if (existing && Array.isArray(existing.pois) && existing.pois.length > 0) {
     buildingPoisMap.set(building.id, existing.pois);
     return;
   }
 
-  // Si pas trouvé : appel Overpass
-  const pois = await fetchPOIsFromOverpass(building);
-  buildingPoisMap.set(building.id, pois);
-
-  // Et on les stocke
-  await client.from("building_pois").upsert(
-    [
-      {
-        building_id: building.id,
-        pois,
-      },
-    ],
-    { onConflict: "building_id" }
-  );
+  // ❌ Ne jamais appeler Overpass ici
+  console.warn(`❌ Aucun POI trouvé pour ${building.id}, ignoré.`);
 }
 
 async function fetchPOIsFromOverpass(building) {
+  console.trace(`🧭 fetchPOIsFromOverpass déclenché pour ${building.id}`);
+
   const lat = building.latlng.lat;
   const lng = building.latlng.lng;
   const radius = 5000;
@@ -324,6 +405,7 @@ async function saveState() {
         position: v.marker?.getLatLng?.() || null,
         retourEnCours: "retourEnCours" in v ? v.retourEnCours : false,
         hospitalTargetId: v.hospitalTarget?.id || null,
+        capacityEau: v.capacityEau ?? null,
       })),
     })),
     missions: missions.map((m) => ({
@@ -455,9 +537,7 @@ async function loadState() {
 
   // 🏢 Restauration des bâtiments
   for (const b of state.buildings) {
-    currentBuilding = { type: b.type, name: b.name };
-    addMode = true;
-    map.fire("click", { latlng: b.latlng });
+    createBuildingFromState(b);
 
     const building = buildings.find(
       (x) => x.name === b.name && x.type === b.type
@@ -503,6 +583,7 @@ async function loadState() {
         missionsCount: v.missionsCount || 0,
         ready: v.ready ?? true,
         retourEnCours: "retourEnCours" in v ? v.retourEnCours : false,
+        capacityEau: v.capacityEau ?? VEHICLE_WATER_CAPACITY[v.type] ?? null,
       };
 
       if (v.position && v.status !== "dc") {
@@ -574,9 +655,6 @@ async function loadState() {
     buildingById[getSafeId(building)] = building;
     refreshBuildingStatus(building);
   }
-  console.log("📍 Préchargement des POIs...");
-  await preloadAllPOIs();
-  console.log("✅ POIs chargés !");
 
   // 🚨 Restauration des missions
   for (const ms of state.missions) {

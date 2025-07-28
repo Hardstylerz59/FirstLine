@@ -120,7 +120,9 @@ map.on("click", (e) => {
   building.marker = marker;
   buildings.push(building);
 
-  getOrFetchPOIsForBuilding(building);
+  setTimeout(() => {
+    addPOIsToNewBuilding(building);
+  }, 0);
 
   document.getElementById("map").classList.remove("add-cursor");
   const confirmBtn = document.getElementById("confirm-add-building");
@@ -130,6 +132,30 @@ map.on("click", (e) => {
   document.getElementById("map-notice").classList.add("hidden");
   scheduleAutoSave();
 });
+
+async function addPOIsToNewBuilding(building) {
+  try {
+    console.log(`📡 Fetch POIs for ${building.id}...`);
+    const pois = await fetchPOIsFromOverpass(building);
+    console.log(`✅ ${pois.length} POIs récupérés.`);
+
+    buildingPoisMap.set(building.id, pois);
+
+    if (pois.length > 0) {
+      await client
+        .from("building_pois")
+        .insert([{ building_id: building.id, pois }]);
+      console.log(`📝 POIs enregistrés dans Supabase pour ${building.id}`);
+    } else {
+      console.warn(`⚠️ Aucun POI trouvé pour ${building.id}`);
+    }
+  } catch (e) {
+    console.warn(
+      `❌ Erreur récupération/enregistrement POIs pour ${building.id}`,
+      e
+    );
+  }
+}
 
 function addVehicle(safeId, vehicleType) {
   const building = buildings.find((b) => getSafeId(b) === safeId);
@@ -162,21 +188,23 @@ function addVehicle(safeId, vehicleType) {
     type: vehicleType,
     ready: true,
     label,
-    kilometrage: 0, // total en mètres
-    usure: 0, // pour plus tard
+    kilometrage: 0,
+    usure: 0,
     missionsCount: 0,
     required: requiredPersonnelForVehicle,
-    maintenance: false, // <--- Nouveau flag
+    maintenance: false,
     status: "dc",
   };
+
+  if (VEHICLE_WATER_CAPACITY[vehicleType]) {
+    vehicle.capacityEau = VEHICLE_WATER_CAPACITY[vehicleType];
+  }
 
   building.vehicles.push(vehicle);
   building.vehicles.sort((a, b) => a.label.localeCompare(b.label));
 
   refreshVehicleStatusForBuilding(building);
-
-  updateVehicleListDisplay(safeId); // ✅ un seul appel ici
-
+  updateVehicleListDisplay(safeId);
   refreshBuildingStatus(building);
   updateSidebarVehicleList(safeId);
 

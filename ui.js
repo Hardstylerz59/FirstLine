@@ -702,7 +702,7 @@ function openManageMission(missionId) {
 
   const modal = document.getElementById("manage-modal");
   if (!modal) return;
-  modal.dataset.missionId = missionId; // Défini dès le début
+  modal.dataset.missionId = missionId;
   modal.classList.remove("hidden");
   if (modal.classList.contains("hidden")) return;
   if (modal.dataset.missionId !== String(mission.id)) return;
@@ -713,7 +713,6 @@ function openManageMission(missionId) {
   if (!template) return;
 
   const requiredVehicles = template.vehicles;
-
   const requiredCounts = {};
   requiredVehicles.forEach((v) => {
     requiredCounts[v.type] = (requiredCounts[v.type] || 0) + 1;
@@ -739,6 +738,10 @@ function openManageMission(missionId) {
     }
   }
 
+  const totalWaterAvailable = mission.dispatched
+    .filter((d) => d.vehicle?.capacityEau)
+    .reduce((sum, d) => sum + d.vehicle.capacityEau, 0);
+
   const div = document.getElementById("manage-content");
   div.innerHTML = `
     <h3>${
@@ -746,7 +749,8 @@ function openManageMission(missionId) {
     }</h3>
     <p><strong>📍 Adresse :</strong> ${
       mission.address || "Adresse non disponible"
-    }</p></br>
+    }</p>
+    <br/>
     <p><strong>Appel :</strong> ${mission.dialogue}</p><br/>
 
     <h4>Véhicules engagés :</h4>
@@ -757,11 +761,10 @@ function openManageMission(missionId) {
           (d) =>
             d.vehicle &&
             d.vehicle.status !== "dc" &&
-            d.vehicle.status !== "tr" && // Ne pas afficher en transport hôpital
-            d.vehicle.status !== "ch" && // Ne pas afficher à l’hôpital
-            d.vehicle.status !== "ot" // Ne pas afficher en retour
+            d.vehicle.status !== "tr" &&
+            d.vehicle.status !== "ch" &&
+            d.vehicle.status !== "ot"
         )
-
         .map((d) => {
           const v = d.vehicle;
           const b = d.building;
@@ -775,11 +778,9 @@ function openManageMission(missionId) {
             ch: "CH",
           };
           const statusText = statusLabels[v.status] || v.status.toUpperCase();
-
           const showCancel =
             ["er", "al", "at"].includes(v.status) && !v.retourEnCours;
 
-          // TIMER d'arrivée pour ER
           let arrivalTimer = "";
           if (v.status === "er" && v.arrivalTime) {
             const secLeft = Math.max(
@@ -789,10 +790,15 @@ function openManageMission(missionId) {
             arrivalTimer = `<span class="timer-er" style="margin-left:8px;color:#007bff;font-weight:bold;">⏱ ${secLeft}s</span>`;
           }
 
+          const waterInfo = v.capacityEau
+            ? `<span class="vehicle-water">💧 ${v.capacityEau} L</span>`
+            : "";
+
           return `
               <li class="vehicle-entry">
                 <span>${v.label}</span>
                 ${arrivalTimer}
+                ${waterInfo}
                 <span class="vehicle-actions">
                   <span class="status ${v.status}">${statusText}</span>
                   ${
@@ -836,7 +842,26 @@ function openManageMission(missionId) {
             )}</p>`
           : `<p class="vehicle-status-ok">🟢 Tous les moyens requis sont sur place</p>`
       }
-         <br/>
+      ${
+        template?.waterNeeded
+          ? `
+      <div class="water-summary"><br/>
+        <strong>💧 Eau requise :</strong>
+        <div class="water-bar-container">
+          <div class="water-bar" style="width: ${Math.min(
+            100,
+            Math.floor((totalWaterAvailable / template.waterNeeded) * 100)
+          )}%;"></div>
+        </div>
+        <div class="water-text">${totalWaterAvailable} / ${
+              template.waterNeeded
+            } L</div>
+      </div>
+    `
+          : ""
+      }
+
+      <br/>
     `;
   }
 
@@ -850,7 +875,6 @@ function openManageMission(missionId) {
   document.getElementById("manage-modal").classList.remove("hidden");
   document.getElementById("manage-modal").dataset.missionId = missionId;
 
-  // Rafraîchissement en direct tant que modal ouvert
   clearInterval(manageMissionInterval);
   manageMissionInterval = setInterval(() => {
     const isOpen = !document
@@ -863,7 +887,6 @@ function openManageMission(missionId) {
 
     const stillExists = missions.some((m) => m.id === missionId);
     if (!stillExists) {
-      // Mission terminée → fermeture automatique du modal
       document.getElementById("manage-modal").classList.add("hidden");
       clearInterval(manageMissionInterval);
       return;

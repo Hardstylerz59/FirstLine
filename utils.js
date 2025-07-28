@@ -7,6 +7,10 @@ const PATIENT_STAY_DURATION = {
   critical: 960000,
 };
 
+const VEHICLE_WATER_CAPACITY = {
+  FPT: 3000,
+};
+
 window.GameUtils = {
   EARLY_RESPONSE_WINDOW_MS: 30000, // 1 minute
   EARLY_RESPONSE_XP_BONUS: 10,
