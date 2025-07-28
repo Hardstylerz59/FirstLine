@@ -1524,3 +1524,24 @@ th.sorted {
   border-radius: 8px;
   margin-left: 4px;
 }
+
+.reinforcement-filters {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.building-group.fire {
+  border-left: 4px solid #e74c3c;
+  padding-left: 6px;
+}
+
+.building-group.hospital {
+  border-left: 4px solid #2ecc71;
+  padding-left: 6px;
+}
+
+.building-group.police {
+  border-left: 4px solid #3498db;
+  padding-left: 6px;
+}

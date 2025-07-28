@@ -229,6 +229,14 @@ function openCallModal(missionId) {
 
 function buildVehicleListForCall(autoSelect = true) {
   let personnelVirtuel = {};
+  const activeFilter =
+    document.querySelector(".filter-btn.active")?.dataset.filter || "ALL";
+
+  const typeMap = {
+    FIRE: ["cpi", "cs", "csp"],
+    HOSPITAL: ["hopital"],
+    POLICE: ["police"],
+  };
   const position = currentCallMission?.position;
   if (!position) return;
 
@@ -278,6 +286,10 @@ function buildVehicleListForCall(autoSelect = true) {
   const allVehicles = [];
 
   buildings.forEach((b) => {
+    if (activeFilter !== "ALL" && !typeMap[activeFilter]?.includes(b.type)) {
+      return; // On saute ce bâtiment
+    }
+
     b.vehicles.forEach((v) => {
       if ((v.ready && v.status === "dc") || v.status === "ot") {
         const dist = map.distance(position, v.marker?.getLatLng() || b.latlng);
@@ -347,7 +359,7 @@ function buildVehicleListForCall(autoSelect = true) {
     const header = document.createElement("div");
     header.className = "building-header";
     header.innerHTML = `
-      <strong>🚒 ${shortType} ${building.name}</strong>
+      <strong>${shortType} ${building.name}</strong>
       – 👥 Dispo:<span class="perso-left"
             data-building-id="${building.id}"
             data-total="${personnelTotal}">
@@ -438,9 +450,27 @@ function buildVehicleListForCall(autoSelect = true) {
     });
 
     container.appendChild(section);
+    if (["cpi", "cs", "csp"].includes(building.type)) {
+      section.classList.add("fire");
+    } else if (building.type === "hopital") {
+      section.classList.add("hospital");
+    } else if (building.type === "police") {
+      section.classList.add("police");
+    }
   });
 
   setupPersonnelCountListeners();
+  document
+    .querySelectorAll("#call-filter-buttons .filter-btn")
+    .forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document
+          .querySelectorAll("#call-filter-buttons .filter-btn")
+          .forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        buildVehicleListForCall(false); // Ne pas refaire d'autosélection
+      });
+    });
 
   const debouncedRebuild = debounce(() => buildVehicleListForCall(false), 120);
   document
@@ -522,10 +552,30 @@ function setupPersonnelCountListeners() {
 }
 
 function refreshVehicleStatusAndDistance() {
+  const activeFilter =
+    document.querySelector(".filter-btn.active")?.dataset.filter || "ALL";
+
+  const typeMap = {
+    FIRE: ["cpi", "cs", "csp"],
+    HOSPITAL: ["hopital"],
+    POLICE: ["police"],
+  };
+
   const position = currentCallMission?.position;
   if (!position) return;
 
   document.querySelectorAll(".vehicle-select-row").forEach((row) => {
+    const buildingId = row.dataset.buildingId;
+    const building = buildings.find((b) => b.id === buildingId);
+    if (
+      activeFilter !== "ALL" &&
+      building &&
+      !typeMap[activeFilter]?.includes(building.type)
+    ) {
+      row.remove(); // On masque les lignes hors filtre
+      return;
+    }
+
     const vehicleId = row.dataset.vehicleId;
     const vehicle = buildings
       .flatMap((b) => b.vehicles)
@@ -533,8 +583,6 @@ function refreshVehicleStatusAndDistance() {
     if (!vehicle) return;
 
     // Distance
-    const buildingId = row.dataset.buildingId;
-    const building = buildings.find((b) => b.id === buildingId);
     const vehiclePos = getVehicleLatLng(vehicle, building);
     const distance = Math.round(map.distance(position, vehiclePos));
 
@@ -873,6 +921,8 @@ function openReinforcementModal(missionId) {
 
   document.getElementById("reinforcement-modal").classList.remove("hidden");
 
+  setupReinforcementFilterButtons(); // ← ici
+
   // Première génération complète
   buildVehicleListForReinforcement();
 
@@ -892,6 +942,9 @@ function openReinforcementModal(missionId) {
 }
 
 function buildVehicleListForReinforcement() {
+  const activeFilter =
+    document.querySelector(".filter-btn.active")?.dataset.filter || "ALL";
+
   let personnelVirtuel = {};
   const position = currentMissionForReinforcement?.position;
   if (!position) return;
@@ -912,6 +965,15 @@ function buildVehicleListForReinforcement() {
   const allVehicles = [];
 
   buildings.forEach((b) => {
+    const typeMap = {
+      FIRE: ["cpi", "cs", "csp"],
+      HOSPITAL: ["hopital"],
+      POLICE: ["police"],
+    };
+
+    if (activeFilter !== "ALL" && !typeMap[activeFilter]?.includes(b.type)) {
+      return; // ne pas inclure ce bâtiment
+    }
     b.vehicles.forEach((v) => {
       if ((v.ready && v.status === "dc") || v.status === "ot") {
         const dist = map.distance(position, v.marker?.getLatLng() || b.latlng);
@@ -979,7 +1041,7 @@ function buildVehicleListForReinforcement() {
     const header = document.createElement("div");
     header.className = "building-header";
     header.innerHTML = `
-      <strong>🚒 ${shortType} ${building.name}</strong>
+      <strong>${shortType} ${building.name}</strong>
       – 👥 Dispo:<span class="perso-left"
             data-building-id="${building.id}"
             data-total="${personnelTotal}">
@@ -1101,6 +1163,14 @@ function buildVehicleListForReinforcement() {
     }
 
     container.appendChild(section);
+
+    if (["cpi", "cs", "csp"].includes(building.type)) {
+      section.classList.add("fire");
+    } else if (building.type === "hopital") {
+      section.classList.add("hospital");
+    } else if (building.type === "police") {
+      section.classList.add("police");
+    }
   });
 
   setupPersonnelCountListeners(); // ← ✔ calcule le personnel dynamique et bloque les checkbox si besoin
@@ -1118,6 +1188,14 @@ function buildVehicleListForReinforcement() {
 }
 
 function refreshVehicleListForReinforcement() {
+  const activeFilter =
+    document.querySelector(".filter-btn.active")?.dataset.filter || "ALL";
+
+  const typeMap = {
+    FIRE: ["cpi", "cs", "csp"],
+    HOSPITAL: ["hopital"],
+    POLICE: ["police"],
+  };
   const position = currentMissionForReinforcement?.position;
   if (!position) return;
 
@@ -1150,7 +1228,12 @@ function refreshVehicleListForReinforcement() {
   });
 
   const disponibles = [];
+
   buildings.forEach((b) => {
+    if (activeFilter !== "ALL" && !typeMap[activeFilter]?.includes(b.type)) {
+      return; // on saute ce bâtiment
+    }
+
     b.vehicles.forEach((v) => {
       if ((v.ready && v.status === "dc") || v.status === "ot") {
         const dist = map.distance(position, v.marker?.getLatLng() || b.latlng);
@@ -1192,7 +1275,10 @@ function refreshVehicleListForReinforcement() {
 
     let row = lignesActuelles[v.id];
 
+    let isNew = false;
+
     if (!row) {
+      isNew = true;
       row = document.createElement("label");
       row.className = "vehicle-select-row";
       row.dataset.vehicleId = v.id;
@@ -1202,22 +1288,40 @@ function refreshVehicleListForReinforcement() {
 
     const isChecked = !!checkedMap[v.id];
 
-    row.innerHTML = `
-      <input type="checkbox"
-        data-building-id="${b.id}"
-        data-vehicle-id="${v.id}"
-        data-staff="${staffRequired}"
-        ${isChecked ? "checked" : ""}>
-      <span class="vehicle-label">${cleanLabel}</span>
-      <span class="vehicle-distance">${Math.round(entry.distance)} m</span>
-      <span class="status ${v.status}">${v.status.toUpperCase()}</span>
-    `;
+    if (isNew) {
+      // On construit la ligne une seule fois
+      row.innerHTML = `
+    <input type="checkbox"
+      data-building-id="${b.id}"
+      data-vehicle-id="${v.id}"
+      data-staff="${staffRequired}"
+      ${isChecked ? "checked" : ""}>
+    <span class="vehicle-label">${cleanLabel}</span>
+    <span class="vehicle-distance">${Math.round(entry.distance)} m</span>
+    <span class="status ${v.status}">${v.status.toUpperCase()}</span>
+  `;
+    } else {
+      // On met à jour uniquement ce qui change
+      const labelSpan = row.querySelector(".vehicle-label");
+      const distanceSpan = row.querySelector(".vehicle-distance");
+      const statusSpan = row.querySelector(".status");
+
+      labelSpan.textContent = cleanLabel;
+      distanceSpan.textContent = `${Math.round(entry.distance)} m`;
+      statusSpan.textContent = v.status.toUpperCase();
+      statusSpan.className = `status ${v.status}`;
+    }
 
     const checkbox = row.querySelector("input[type=checkbox]");
     const statusSpan = row.querySelector(".status");
 
-    if (isChecked) statusSpan.classList.add("selected-synced");
-    else statusSpan.classList.remove("selected-synced");
+    if (isChecked) {
+      if (!statusSpan.classList.contains("selected-synced")) {
+        statusSpan.classList.add("selected-synced");
+      }
+    } else {
+      statusSpan.classList.remove("selected-synced");
+    }
 
     checkbox.addEventListener("change", () => {
       const buildingId = checkbox.dataset.buildingId;
@@ -3138,4 +3242,18 @@ function escapeHtml(str) {
       "'": "&#39;",
     }[m];
   });
+}
+
+function setupReinforcementFilterButtons() {
+  document
+    .querySelectorAll("#reinforcement-filter-buttons .filter-btn")
+    .forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document
+          .querySelectorAll("#reinforcement-filter-buttons .filter-btn")
+          .forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        buildVehicleListForReinforcement(); // relance l'affichage
+      });
+    });
 }

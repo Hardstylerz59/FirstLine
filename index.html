@@ -321,6 +321,15 @@
             class="hidden vehicle-selection-context"
           >
             <h4>Véhicules disponibles</h4>
+            <div id="call-filter-buttons" style="margin-bottom: 8px">
+              <button class="filter-btn active" data-filter="ALL">Tous</button>
+              <button class="filter-btn" data-filter="FIRE">Caserne</button>
+              <button class="filter-btn" data-filter="HOSPITAL">Hôpital</button>
+              <button class="filter-btn" data-filter="POLICE">
+                Commissariat
+              </button>
+            </div>
+
             <div id="vehicle-list"></div>
           </div>
 
@@ -344,6 +353,15 @@
       <div id="reinforcement-modal" class="hidden modal-overlay">
         <div class="modal-content large-modal reinforcement-selection-context">
           <h3>🚒 Ajouter des renforts</h3>
+          <div id="reinforcement-filter-buttons" class="reinforcement-filters">
+            <button data-filter="ALL" class="filter-btn active">Tous</button>
+            <button data-filter="FIRE" class="filter-btn">Caserne</button>
+            <button data-filter="HOSPITAL" class="filter-btn">Hôpital</button>
+            <button data-filter="POLICE" class="filter-btn">
+              Commissariat
+            </button>
+          </div>
+
           <div id="reinforcement-vehicles"></div>
           <button id="send-reinforcements-btn">✅ Envoyer renforts</button>
           <button onclick="closeReinforcementModal()">Annuler</button>

@@ -1,12 +1,17 @@
+let isLoadingPOIs = true;
+
 async function preloadAllPOIs() {
+  isLoadingPOIs = true; // ← Blocage activé
+
   const loader = document.getElementById("loader-pois");
   loader.classList.remove("hidden");
 
   for (const building of buildings) {
-    await getOrFetchPOIsForBuilding(building); // Appel à la fonction dans save.js
+    await getOrFetchPOIsForBuilding(building);
   }
 
   loader.classList.add("hidden");
+  isLoadingPOIs = false; // ← Fin du blocage
 }
 
 function createMission() {
@@ -169,7 +174,6 @@ function finishMission(mission) {
         : vehicle.lastKnownPosition;
 
     function refreshAllRefs(originBuilding) {
-      // On force la maj sur la référence du tableau principal
       const mainBuilding = buildings.find((b) => b.id === originBuilding.id);
       if (mainBuilding) {
         mainBuilding.personnelAvailable = originBuilding.personnelAvailable;
@@ -180,17 +184,18 @@ function finishMission(mission) {
           building.type === "csp"
         ) {
           // Caserne à gestion pro/vol
-          const engaged = vehicle._engagedStaff || { pro: 0, vol: 0 }; // Stocké à l'envoi (à faire si pas fait)
+          const engaged = vehicle._engagedStaff || { pro: 0, vol: 0 };
           building.personnelAvailablePro =
             (building.personnelAvailablePro || 0) + (engaged.pro || 0);
           building.personnelAvailableVol =
             (building.personnelAvailableVol || 0) + (engaged.vol || 0);
-          vehicle._engagedStaff = { pro: 0, vol: 0 }; // Reset après restitution
+          vehicle._engagedStaff = { pro: 0, vol: 0 };
         } else {
           // Autres bâtiments, système classique
           building.personnelAvailable =
             (building.personnelAvailable || 0) + (vehicle.required || 0);
         }
+
         updateVehicleStatus(vehicle, "dc");
         vehicle.status = "dc";
         logVehicleRadio(vehicle, "dc", { targetBuilding: building });
@@ -198,6 +203,14 @@ function finishMission(mission) {
         refreshVehicleStatusForBuilding(mainBuilding);
         updateVehicleListDisplay(getSafeId(mainBuilding));
         refreshBuildingStatus(mainBuilding);
+
+        // 🔁 [AJOUT] Mise à jour manuelle du DOM de la sidebar (cas SMUR / Police / autres)
+        const safeId = getSafeId(mainBuilding);
+        const spanTotal = document.getElementById(`staff-${safeId}`);
+        const spanAvail = document.getElementById(`staff-avail-${safeId}`);
+        if (spanTotal) spanTotal.textContent = mainBuilding.personnel || 0;
+        if (spanAvail)
+          spanAvail.textContent = mainBuilding.personnelAvailable || 0;
 
         if (
           document.getElementById("hospital-modal") &&
@@ -2064,6 +2077,7 @@ function retryCriticalVictimTreatment(mission) {
 let missionAutoEnabled = true;
 
 function createMissionSafely() {
+  if (isLoadingPOIs) return;
   if (missionAutoEnabled) createMission();
 }
 

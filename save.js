@@ -505,12 +505,13 @@ async function loadState() {
         retourEnCours: "retourEnCours" in v ? v.retourEnCours : false,
       };
 
-      if (v.position) {
+      if (v.position && v.status !== "dc") {
         const icon = L.icon({
           iconUrl: `assets/icons/${v.type.toLowerCase()}.png`,
           iconSize: [24, 24],
           iconAnchor: [12, 12],
         });
+
         const marker = L.marker(v.position, { icon })
           .addTo(map)
           .bindTooltip(`${v.label}`, { permanent: false, direction: "top" });
