@@ -194,9 +194,6 @@ async function updateAuthUI() {
     authBox.style.display = "none";
     gameUI.style.display = "block";
     const pseudo = data.user.user_metadata?.pseudo;
-    userDisplay.textContent = `Connecté en tant que ${
-      pseudo || data.user.email
-    }`;
     loadGame(); // Chargement automatique
   } else {
     authBox.style.display = "block";

@@ -1,5 +1,48 @@
 let isLoadingPOIs = false;
 
+let currentWeather = "soleil";
+let currentCycle = "jour";
+
+function startEnvironmentCycle() {
+  // Changement météo
+  setInterval(() => {
+    currentWeather =
+      WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
+    updateWeatherUI();
+  }, 1000 * 60 * WEATHER_CYCLE_DURATION_MINUTES);
+
+  // Changement jour/nuit
+  setInterval(() => {
+    currentCycle = currentCycle === "jour" ? "nuit" : "jour";
+    updateCycleUI();
+  }, 1000 * 60 * DAY_NIGHT_CYCLE_DURATION_MINUTES);
+}
+
+function updateWeatherUI() {
+  const iconMap = {
+    soleil: "sun.png",
+    pluie: "rain.png",
+    orageux: "storm.png",
+    neige: "snow.png",
+    brouillard: "fog.png",
+  };
+
+  const label =
+    currentWeather.charAt(0).toUpperCase() + currentWeather.slice(1);
+  document.getElementById("weather-label").textContent = label;
+  document.getElementById("weather-icon").src = `assets/weather/${
+    iconMap[currentWeather] || "sun.png"
+  }`;
+}
+
+function updateCycleUI() {
+  const icon = currentCycle === "jour" ? "day.png" : "night.png";
+  const label = currentCycle.charAt(0).toUpperCase() + currentCycle.slice(1);
+  document.getElementById("cycle-label").textContent = label;
+  document.getElementById("cycle-icon").src = `assets/weather/${icon}`;
+  //document.body.classList.toggle("night-mode", currentCycle === "nuit");
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -39,9 +82,16 @@ function createMission() {
   if (list.length === 0) return;
 
   const missionsEnriched = list.map((m) => enrichMissionBase(m, realType));
-  const missionsEligible = missionsEnriched.filter(
-    (m) => player.level >= m.minLevel
-  );
+  const missionsEligible = missionsEnriched.filter((m) => {
+    const levelOk = player.level >= m.minLevel;
+    const weatherOk =
+      !m.meteo || m.meteo.length === 0 || m.meteo.includes(currentWeather);
+    const cycleOk =
+      !m.cycle || m.cycle.length === 0 || m.cycle.includes(currentCycle);
+
+    return levelOk && weatherOk && cycleOk;
+  });
+
   if (missionsEligible.length === 0) return;
 
   const selected =
@@ -92,7 +142,9 @@ function createMission() {
     position: latlng,
     marker: null,
     active: false,
-    dialogue: selected.dialogue,
+    dialogue: Array.isArray(selected.dialogue)
+      ? selected.dialogue[Math.floor(Math.random() * selected.dialogue.length)]
+      : selected.dialogue,
     solutionType: selected.type,
     sourceType: realType,
     victims: generateVictims(selected),

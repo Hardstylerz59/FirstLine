@@ -6,6 +6,7 @@ const player = {
 };
 
 // === INITIALISATION DE LA CARTE ===
+
 const map = L.map("map").setView([50.175, 3.234], 13); // Vue par défaut : Cambrai
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "&copy; OpenStreetMap contributors",
@@ -118,6 +119,10 @@ document
     currentBuilding = null;
     document.getElementById("map-notice").classList.add("hidden");
   });
+
+startEnvironmentCycle();
+updateWeatherUI();
+updateCycleUI();
 
 // === SAUVEGARDE AUTOMATIQUE toutes les 30 secondes ===
 setInterval(() => {

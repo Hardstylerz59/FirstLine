@@ -11,6 +11,13 @@ const VEHICLE_WATER_CAPACITY = {
   FPT: 3000,
 };
 
+const WEATHER_TYPES = ["soleil", "nuageux", "pluie", "orageux", "neige"];
+const DAY_CYCLES = ["jour", "nuit"];
+
+// utils.js ou constants.js
+const WEATHER_CYCLE_DURATION_MINUTES = 0.1; // Météo toutes les 4 minutes
+const DAY_NIGHT_CYCLE_DURATION_MINUTES = 0.1; // Cycle jour/nuit toutes les 6 minutes
+
 window.GameUtils = {
   EARLY_RESPONSE_WINDOW_MS: 30000, // 1 minute
   EARLY_RESPONSE_XP_BONUS: 10,

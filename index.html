@@ -93,7 +93,16 @@
         <button onclick="signOut()" class="danger">🚪 Se déconnecter</button>
 
         <!-- Affichage email utilisateur connecté -->
-        <div id="user-email-display"></div>
+        <div id="env-info">
+          <div class="env-block" id="weather-info">
+            <img id="weather-icon" src="assets/weather/sun.png" alt="Soleil" />
+            <span id="weather-label">Soleil</span>
+          </div>
+          <div class="env-block" id="cycle-info">
+            <img id="cycle-icon" src="assets/weather/day.png" alt="Jour" />
+            <span id="cycle-label">Jour</span>
+          </div>
+        </div>
       </div>
 
       <!-- Contenu principal du jeu -->
