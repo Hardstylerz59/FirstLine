@@ -123,6 +123,7 @@ document
 startEnvironmentCycle();
 updateWeatherUI();
 updateCycleUI();
+preloadAllPOIs();
 
 // === SAUVEGARDE AUTOMATIQUE toutes les 30 secondes ===
 setInterval(() => {

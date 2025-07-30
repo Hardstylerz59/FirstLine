@@ -71,7 +71,6 @@ async function preloadAllPOIs() {
 
 function createMission() {
   if (missions.length >= buildings.length + 1 || buildings.length === 0) return;
-  let usedPoi = null;
 
   const origin = buildings[Math.floor(Math.random() * buildings.length)];
   const realType = ["cpi", "cs", "csp"].includes(origin.type)
@@ -82,26 +81,54 @@ function createMission() {
   if (list.length === 0) return;
 
   const missionsEnriched = list.map((m) => enrichMissionBase(m, realType));
-  const missionsEligible = missionsEnriched.filter((m) => {
-    const levelOk = player.level >= m.minLevel;
-    const weatherOk =
-      !m.meteo || m.meteo.length === 0 || m.meteo.includes(currentWeather);
-    const cycleOk =
-      !m.cycle || m.cycle.length === 0 || m.cycle.includes(currentCycle);
-
-    return levelOk && weatherOk && cycleOk;
-  });
-
+  const missionsEligible = missionsEnriched.filter(
+    (m) => player.level >= m.minLevel
+  );
   if (missionsEligible.length === 0) return;
 
   const selected =
     missionsEligible[Math.floor(Math.random() * missionsEligible.length)];
 
-  let latlng = null;
+  let variant = null;
+  if (selected.variants && Array.isArray(selected.variants)) {
+    const eligibleVariants = selected.variants.filter((v) => {
+      const meteoOk =
+        !v.meteo || v.meteo.length === 0 || v.meteo.includes(currentWeather);
+      const cycleOk =
+        !v.cycle || v.cycle.length === 0 || v.cycle.includes(currentCycle);
+      return meteoOk && cycleOk;
+    });
 
-  if (selected.poiTags?.length > 0) {
+    if (eligibleVariants.length === 0) return;
+    variant =
+      eligibleVariants[Math.floor(Math.random() * eligibleVariants.length)];
+  } else {
+    variant = {
+      dialogue: selected.dialogue,
+      label: selected.label,
+      poiTags: selected.poiTags || [],
+      victimCount: selected.victimCount || { min: 0, max: 0 },
+      cycle: selected.cycle || "",
+      meteo: selected.meteo || [],
+      vehicles: selected.vehicles || [],
+    };
+  }
+
+  // Appliquer les propriétés du variant
+  selected.dialogue = variant.dialogue;
+  selected.label = variant.label;
+  selected.poiTags = variant.poiTags || [];
+  selected.victimCount = variant.victimCount || { min: 0, max: 0 };
+  selected.vehicles = variant.vehicles || selected.vehicles || [];
+
+  let latlng = null;
+  let usedPoi = null;
+
+  if (selected.poiTags.length > 0) {
     const pois = buildingPoisMap.get(origin.id);
-    if (pois === undefined) return;
+    if (!pois) {
+      return;
+    }
 
     const matchingPois = pois.filter((poi) =>
       selected.poiTags.some((tag) => poi.tags?.[tag])
@@ -110,8 +137,8 @@ function createMission() {
     if (matchingPois.length > 0) {
       const poi = matchingPois[Math.floor(Math.random() * matchingPois.length)];
       latlng = L.latLng(poi.lat, poi.lng);
-
-      usedPoi = poi; // <-- Stocke le POI utilisé
+      usedPoi = poi;
+    } else {
     }
   }
 
@@ -120,11 +147,6 @@ function createMission() {
     const lng = origin.latlng.lng + (Math.random() - 0.5) * 0.05;
     latlng = L.latLng(lat, lng);
   }
-
-  console.log(
-    `[Mission créée] ${selected.label} — POI utilisé :`,
-    usedPoi ? usedPoi : "aucun (coordonnée aléatoire)"
-  );
 
   const mission = {
     id: Date.now().toString(),
@@ -138,7 +160,7 @@ function createMission() {
     duration: typeof selected.duration === "number" ? selected.duration : 0,
     durationMs:
       typeof selected.durationMs === "number" ? selected.durationMs : 0,
-    vehicles: [],
+    vehicles: selected.vehicles || [],
     position: latlng,
     marker: null,
     active: false,
@@ -149,6 +171,7 @@ function createMission() {
     sourceType: realType,
     victims: generateVictims(selected),
     startTime: Date.now(),
+    variantUsed: variant,
   };
 
   const li = document.createElement("li");
@@ -175,13 +198,15 @@ function createMission() {
 
   const marker = L.marker(latlng, { icon })
     .addTo(map)
-    .bindPopup(() => {
-      return (
-        mission.domElement?.cloneNode(true) || "<em>Pas d’info mission</em>"
-      );
-    });
-
+    .bindPopup(
+      () => mission.domElement?.cloneNode(true) || "<em>Pas d’info mission</em>"
+    );
   mission.marker = marker;
+
+  console.log(`[🚨 Mission créée] ${variant.label}`);
+  console.log(`[📞 Dialogue] "${variant.dialogue}"`);
+  console.log(`→ POI utilisé :`, usedPoi || "aucun (coordonnée aléatoire)");
+  console.log(`→ Cycle: ${variant.cycle} | Météo: ${variant.meteo}`);
 
   if (soundEnabled) {
     const sound = document.getElementById("mission-sound");

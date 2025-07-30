@@ -712,9 +712,12 @@ function openManageMission(missionId) {
   );
   if (!template) return;
 
-  const requiredVehicles = template.vehicles;
   const requiredCounts = {};
+  const requiredVehicles =
+    template.vehicles ?? template.variants?.[0]?.vehicles ?? []; // fallback si pas de véhicules au niveau racine
+
   requiredVehicles.forEach((v) => {
+    if (!v || !v.type) return; // sécurité
     requiredCounts[v.type] = (requiredCounts[v.type] || 0) + 1;
   });
 

@@ -535,7 +535,7 @@ async function loadState() {
   // 🏢 Restauration des bâtiments
   for (const b of state.buildings) {
     createBuildingFromState(b);
-
+    await preloadAllPOIs();
     const building = buildings.find(
       (x) => x.name === b.name && x.type === b.type
     );
