@@ -704,21 +704,19 @@ function openManageMission(missionId) {
   if (!modal) return;
   modal.dataset.missionId = missionId;
   modal.classList.remove("hidden");
-  if (modal.classList.contains("hidden")) return;
-  if (modal.dataset.missionId !== String(mission.id)) return;
 
   const template = MISSION_TYPES[mission.sourceType]?.find(
     (m) => m.type === mission.realType
   );
   if (!template) return;
 
-  const requiredCounts = {};
-  const requiredVehicles =
-    template.vehicles ?? template.variants?.[0]?.vehicles ?? []; // fallback si pas de véhicules au niveau racine
+  const variant = template.variants?.[0] || template;
 
+  const requiredCounts = {};
+  const requiredVehicles = variant.vehicles || [];
   requiredVehicles.forEach((v) => {
-    if (!v || !v.type) return; // sécurité
-    requiredCounts[v.type] = (requiredCounts[v.type] || 0) + 1;
+    if (!v || !v.type) return;
+    requiredCounts[v.type] = (requiredCounts[v.type] || 0) + v.nombre;
   });
 
   const arrivedCounts = {};
@@ -728,9 +726,7 @@ function openManageMission(missionId) {
     }
   });
 
-  const atLeastOneArrived = Object.values(arrivedCounts).some(
-    (count) => count > 0
-  );
+  const atLeastOneArrived = Object.values(arrivedCounts).some((v) => v > 0);
 
   const missingVehicles = [];
   for (const type in requiredCounts) {
@@ -740,10 +736,6 @@ function openManageMission(missionId) {
       missingVehicles.push(`${type} (${required - arrived} manquant)`);
     }
   }
-
-  const totalWaterAvailable = mission.dispatched
-    .filter((d) => d.vehicle?.capacityEau)
-    .reduce((sum, d) => sum + d.vehicle.capacityEau, 0);
 
   const div = document.getElementById("manage-content");
   div.innerHTML = `
@@ -762,16 +754,10 @@ function openManageMission(missionId) {
         .filter((d) => !d.canceled)
         .filter(
           (d) =>
-            d.vehicle &&
-            d.vehicle.status !== "dc" &&
-            d.vehicle.status !== "tr" &&
-            d.vehicle.status !== "ch" &&
-            d.vehicle.status !== "ot"
+            d.vehicle && !["dc", "tr", "ch", "ot"].includes(d.vehicle.status)
         )
         .map((d) => {
           const v = d.vehicle;
-          const b = d.building;
-
           const statusLabels = {
             er: "ER",
             al: "AL",
@@ -793,15 +779,10 @@ function openManageMission(missionId) {
             arrivalTimer = `<span class="timer-er" style="margin-left:8px;color:#007bff;font-weight:bold;">⏱ ${secLeft}s</span>`;
           }
 
-          const waterInfo = v.capacityEau
-            ? `<span class="vehicle-water">💧 ${v.capacityEau} L</span>`
-            : "";
-
           return `
               <li class="vehicle-entry">
                 <span>${v.label}</span>
                 ${arrivalTimer}
-                ${waterInfo}
                 <span class="vehicle-actions">
                   <span class="status ${v.status}">${statusText}</span>
                   ${
@@ -819,6 +800,7 @@ function openManageMission(missionId) {
     <div id="victims-panel"></div>
      <br/>
   `;
+
   updateMissionVictimsUI(mission);
 
   if (atLeastOneArrived) {
@@ -840,30 +822,11 @@ function openManageMission(missionId) {
       </ul>
       ${
         missingVehicles.length > 0
-          ? `<p class="vehicle-missing-summary">🟠 En attente : ${missingVehicles.join(
+          ? `<p class="vehicle-missing-summary">🟠 Véhicules manquants : ${missingVehicles.join(
               ", "
             )}</p>`
           : `<p class="vehicle-status-ok">🟢 Tous les moyens requis sont sur place</p>`
       }
-      ${
-        template?.waterNeeded
-          ? `
-      <div class="water-summary"><br/>
-        <strong>💧 Eau requise :</strong>
-        <div class="water-bar-container">
-          <div class="water-bar" style="width: ${Math.min(
-            100,
-            Math.floor((totalWaterAvailable / template.waterNeeded) * 100)
-          )}%;"></div>
-        </div>
-        <div class="water-text">${totalWaterAvailable} / ${
-              template.waterNeeded
-            } L</div>
-      </div>
-    `
-          : ""
-      }
-
       <br/>
     `;
   }
@@ -874,9 +837,6 @@ function openManageMission(missionId) {
   renfortBtn.onclick = () => openReinforcementModal(mission.id);
   div.innerHTML += `<br/>`;
   div.appendChild(renfortBtn);
-
-  document.getElementById("manage-modal").classList.remove("hidden");
-  document.getElementById("manage-modal").dataset.missionId = missionId;
 
   clearInterval(manageMissionInterval);
   manageMissionInterval = setInterval(() => {
@@ -2119,7 +2079,7 @@ function cancelVehicleFromMission(missionId, vehicleId) {
 
   entry.canceled = true; // Marque comme annulé
 
-  if (vehicle.returnAnimation) cancelAnimationFrame(vehicle.returnAnimation);
+  if (vehicle.returnAnimation) stopActiveRoute(vehicle);
   vehicle.arrivalTime = null;
   vehicle.retourEnCours = true;
   entry.canceled = true;
@@ -2128,111 +2088,75 @@ function cancelVehicleFromMission(missionId, vehicleId) {
   const startPoint = vehicle.marker?.getLatLng?.() || vehicle.lastKnownPosition;
   const target = building.latlng;
 
-  fetch(
-    `https://router.project-osrm.org/route/v1/driving/${startPoint.lng},${startPoint.lat};${target.lng},${target.lat}?overview=full&geometries=geojson`
-  )
-    .then((res) => res.json())
-    .then((data) => {
-      const coords = data.routes[0].geometry.coordinates.map(([lng, lat]) =>
-        L.latLng(lat, lng)
-      );
-      if (coords.length < 2) {
-        vehicle.lastKnownPosition = target;
-        vehicle.ready = true;
-        vehicle.status = "dc";
+  fetchRouteCoords(startPoint, target).then((coords) => {
+    if (coords.length < 2) {
+      vehicle.lastKnownPosition = target;
+      vehicle.ready = true;
+      vehicle.status = "dc";
 
-        // AJOUT ici : restitution personnel pompier ou police
-        if (
-          building.type === "cpi" ||
-          building.type === "cs" ||
-          building.type === "csp"
-        ) {
-          const engaged = vehicle._engagedStaff || { pro: 0, vol: 0 }; // Toujours stocké à l'engagement
-          building.personnelAvailablePro =
-            (building.personnelAvailablePro || 0) + (engaged.pro || 0);
-          building.personnelAvailableVol =
-            (building.personnelAvailableVol || 0) + (engaged.vol || 0);
-          vehicle._engagedStaff = { pro: 0, vol: 0 };
-        } else {
-          building.personnelAvailable =
-            (building.personnelAvailable || 0) + (vehicle.required || 0);
-        }
-        updateVehicleStatus(vehicle, "dc");
-        logVehicleRadio(vehicle, "dc", { targetBuilding: building });
-        refreshBuildingStatus(building);
-        refreshVehicleStatusForBuilding(building);
-        updateVehicleListDisplay(getSafeId(building));
-        applyVehicleWear(vehicle);
-        scheduleAutoSave();
-        return;
+      // AJOUT ici : restitution personnel pompier ou police
+      if (
+        building.type === "cpi" ||
+        building.type === "cs" ||
+        building.type === "csp"
+      ) {
+        const engaged = vehicle._engagedStaff || { pro: 0, vol: 0 }; // Toujours stocké à l'engagement
+        building.personnelAvailablePro =
+          (building.personnelAvailablePro || 0) + (engaged.pro || 0);
+        building.personnelAvailableVol =
+          (building.personnelAvailableVol || 0) + (engaged.vol || 0);
+        vehicle._engagedStaff = { pro: 0, vol: 0 };
+      } else {
+        building.personnelAvailable =
+          (building.personnelAvailable || 0) + (vehicle.required || 0);
       }
+      updateVehicleStatus(vehicle, "dc");
+      logVehicleRadio(vehicle, "dc", { targetBuilding: building });
+      refreshBuildingStatus(building);
+      refreshVehicleStatusForBuilding(building);
+      updateVehicleListDisplay(getSafeId(building));
+      applyVehicleWear(vehicle);
+      scheduleAutoSave();
+      return;
+    }
 
-      const segmentDistances = [];
-      let totalRouteDistance = 0;
-      for (let i = 1; i < coords.length; i++) {
-        const d = coords[i - 1].distanceTo(coords[i]);
-        segmentDistances.push(d);
-        totalRouteDistance += d;
-      }
+    const segmentDistances = [];
+    let totalRouteDistance = 0;
+    for (let i = 1; i < coords.length; i++) {
+      const d = coords[i - 1].distanceTo(coords[i]);
+      segmentDistances.push(d);
+      totalRouteDistance += d;
+    }
 
-      const cumulativeDistances = [0];
-      segmentDistances.forEach((d) =>
-        cumulativeDistances.push(
-          cumulativeDistances[cumulativeDistances.length - 1] + d
-        )
-      );
+    const cumulativeDistances = [0];
+    segmentDistances.forEach((d) =>
+      cumulativeDistances.push(
+        cumulativeDistances[cumulativeDistances.length - 1] + d
+      )
+    );
 
-      const speedFactor = VEHICLE_SPEED_BY_TYPE[vehicle.type] || 20;
-      const startTime = Date.now();
-      const start = coords[0];
-      let prevLatLng = start;
+    {
+      const speedFactor = getMsPerMeter(vehicle);
+      const speedMps = 1000 / speedFactor;
+      let prevLatLng = coords[0];
 
-      function animateReturn() {
-        const elapsed = Date.now() - startTime;
-        const distanceCovered = Math.min(
-          elapsed / speedFactor,
-          totalRouteDistance
-        );
-
-        let segmentIndex = 0;
-        while (
-          segmentIndex < cumulativeDistances.length - 1 &&
-          cumulativeDistances[segmentIndex + 1] < distanceCovered
-        ) {
-          segmentIndex++;
-        }
-
-        const segmentStart = coords[segmentIndex];
-        const segmentEnd = coords[segmentIndex + 1];
-        const segDist = segmentDistances[segmentIndex];
-        const distIntoSegment =
-          distanceCovered - cumulativeDistances[segmentIndex];
-        const segRatio = segDist === 0 ? 0 : distIntoSegment / segDist;
-
-        const lat =
-          segmentStart.lat + (segmentEnd.lat - segmentStart.lat) * segRatio;
-        const lng =
-          segmentStart.lng + (segmentEnd.lng - segmentStart.lng) * segRatio;
-
-        // --- PATCH KILOMÉTRAGE ---
-        const currentLatLng = L.latLng(lat, lng);
-        const distStep = prevLatLng.distanceTo(currentLatLng);
-        vehicle.kilometrage = (vehicle.kilometrage || 0) + distStep;
-        prevLatLng = currentLatLng;
-        // --- FIN PATCH ---
-
-        vehicle.lastKnownPosition = currentLatLng;
-        vehicle.marker.setLatLng(currentLatLng);
-
-        if (distanceCovered < totalRouteDistance) {
-          vehicle.returnAnimation = requestAnimationFrame(animateReturn);
-        } else {
-          cancelAnimationFrame(vehicle.returnAnimation);
+      vehicle.returnAnimation = RouteAnimator.animateAlongRoute({
+        coords,
+        speedMps,
+        marker: vehicle.marker,
+        onProgress: ({ pos }) => {
+          if (!pos) return;
+          const distStep = prevLatLng.distanceTo(pos);
+          vehicle.kilometrage = (vehicle.kilometrage || 0) + distStep;
+          prevLatLng = pos;
+          vehicle.lastKnownPosition = pos;
+        },
+        onDone: () => {
           vehicle.retourEnCours = false;
           vehicle.ready = true;
           vehicle.status = "dc";
 
-          // AJOUT ici : restitution personnel pompier ou police
+          // RESTITUTION personnel pompier / police (identique à l’existant)
           if (
             building.type === "cpi" ||
             building.type === "cs" ||
@@ -2250,17 +2174,14 @@ function cancelVehicleFromMission(missionId, vehicleId) {
           }
 
           updateVehicleStatus(vehicle, "dc");
-          logVehicleRadio(vehicle, "dc", { targetBuilding: building });
           refreshBuildingStatus(building);
           refreshVehicleStatusForBuilding(building);
           updateVehicleListDisplay(getSafeId(building));
-          applyVehicleWear(vehicle);
           scheduleAutoSave();
-        }
-      }
-
-      animateReturn();
-    });
+        },
+      });
+    }
+  });
 
   refreshManageModal && refreshManageModal(); // si fonction de refresh dynamique activée
 }
@@ -2654,106 +2575,73 @@ function handleNoHospitalTransport(victimId, missionId) {
   }
 
   // Passe immédiatement en retour (OT)
+
+  vehicle.assignedVictim = null;
   vehicle.retourEnCours = true;
   updateVehicleStatus(vehicle, "ot", { mission, building }); // Pas de setVehicleStatus ici
 
   const startPoint = vehicle.marker?.getLatLng?.() || vehicle.lastKnownPosition;
   const target = building.latlng;
 
-  fetch(
-    `https://router.project-osrm.org/route/v1/driving/${startPoint.lng},${startPoint.lat};${target.lng},${target.lat}?overview=full&geometries=geojson`
-  )
-    .then((res) => res.json())
-    .then((data) => {
-      const coords = data.routes[0].geometry.coordinates.map(([lng, lat]) =>
-        L.latLng(lat, lng)
-      );
-      if (coords.length < 2) {
-        // === RESTITUTION DU PERSONNEL ===
-        if (["cpi", "cs", "csp"].includes(building.type)) {
-          const engaged = vehicle._engagedStaff || { pro: 0, vol: 0 };
-          building.personnelAvailablePro =
-            (building.personnelAvailablePro || 0) + (engaged.pro || 0);
-          building.personnelAvailableVol =
-            (building.personnelAvailableVol || 0) + (engaged.vol || 0);
-          vehicle._engagedStaff = { pro: 0, vol: 0 };
-        } else {
-          building.personnelAvailable =
-            (building.personnelAvailable || 0) + (vehicle.required || 0);
-        }
-
-        vehicle.lastKnownPosition = target;
-        vehicle.ready = true;
-        vehicle.status = "dc";
-        updateVehicleStatus(vehicle, "dc");
-        refreshBuildingStatus(building);
-        refreshVehicleStatusForBuilding(building);
-        updateVehicleListDisplay(getSafeId(building));
-        applyVehicleWear(vehicle);
-        scheduleAutoSave();
-        return;
+  fetchRouteCoords(startPoint, target).then((coords) => {
+    if (coords.length < 2) {
+      // === RESTITUTION DU PERSONNEL ===
+      if (["cpi", "cs", "csp"].includes(building.type)) {
+        const engaged = vehicle._engagedStaff || { pro: 0, vol: 0 };
+        building.personnelAvailablePro =
+          (building.personnelAvailablePro || 0) + (engaged.pro || 0);
+        building.personnelAvailableVol =
+          (building.personnelAvailableVol || 0) + (engaged.vol || 0);
+        vehicle._engagedStaff = { pro: 0, vol: 0 };
+      } else {
+        building.personnelAvailable =
+          (building.personnelAvailable || 0) + (vehicle.required || 0);
       }
 
-      const segmentDistances = [];
-      let totalRouteDistance = 0;
-      for (let i = 1; i < coords.length; i++) {
-        const d = coords[i - 1].distanceTo(coords[i]);
-        segmentDistances.push(d);
-        totalRouteDistance += d;
-      }
+      vehicle.lastKnownPosition = target;
+      vehicle.ready = true;
+      vehicle.status = "dc";
+      updateVehicleStatus(vehicle, "dc");
+      refreshBuildingStatus(building);
+      refreshVehicleStatusForBuilding(building);
+      updateVehicleListDisplay(getSafeId(building));
+      applyVehicleWear(vehicle);
+      scheduleAutoSave();
+      return;
+    }
 
-      const cumulativeDistances = [0];
-      segmentDistances.forEach((d) =>
-        cumulativeDistances.push(
-          cumulativeDistances[cumulativeDistances.length - 1] + d
-        )
-      );
+    const segmentDistances = [];
+    let totalRouteDistance = 0;
+    for (let i = 1; i < coords.length; i++) {
+      const d = coords[i - 1].distanceTo(coords[i]);
+      segmentDistances.push(d);
+      totalRouteDistance += d;
+    }
 
-      const speedFactor = VEHICLE_SPEED_BY_TYPE[vehicle.type] || 20;
-      const startTime = Date.now();
-      const start = coords[0];
-      let prevLatLng = start;
+    const cumulativeDistances = [0];
+    segmentDistances.forEach((d) =>
+      cumulativeDistances.push(
+        cumulativeDistances[cumulativeDistances.length - 1] + d
+      )
+    );
 
-      function animateReturn() {
-        const elapsed = Date.now() - startTime;
-        const distanceCovered = Math.min(
-          elapsed / speedFactor,
-          totalRouteDistance
-        );
+    {
+      const speedFactor = getMsPerMeter(vehicle);
+      const speedMps = 1000 / speedFactor;
+      let prevLatLng = coords[0];
 
-        let segmentIndex = 0;
-        while (
-          segmentIndex < cumulativeDistances.length - 1 &&
-          cumulativeDistances[segmentIndex + 1] < distanceCovered
-        ) {
-          segmentIndex++;
-        }
-
-        const segmentStart = coords[segmentIndex];
-        const segmentEnd = coords[segmentIndex + 1];
-        const segDist = segmentDistances[segmentIndex];
-        const distIntoSegment =
-          distanceCovered - cumulativeDistances[segmentIndex];
-        const segRatio = segDist === 0 ? 0 : distIntoSegment / segDist;
-
-        const lat =
-          segmentStart.lat + (segmentEnd.lat - segmentStart.lat) * segRatio;
-        const lng =
-          segmentStart.lng + (segmentEnd.lng - segmentStart.lng) * segRatio;
-
-        const currentLatLng = L.latLng(lat, lng);
-        const distStep = prevLatLng.distanceTo(currentLatLng);
-        vehicle.kilometrage = (vehicle.kilometrage || 0) + distStep;
-        prevLatLng = currentLatLng;
-
-        vehicle.lastKnownPosition = currentLatLng;
-        vehicle.marker.setLatLng(currentLatLng);
-
-        if (distanceCovered < totalRouteDistance) {
-          vehicle.returnAnimation = requestAnimationFrame(animateReturn);
-        } else {
-          cancelAnimationFrame(vehicle.returnAnimation);
-
+      vehicle.returnAnimation = RouteAnimator.animateAlongRoute({
+        coords,
+        speedMps,
+        marker: vehicle.marker,
+        onProgress: ({ pos }) => {
+          if (!pos) return;
+          const distStep = prevLatLng.distanceTo(pos);
+          vehicle.kilometrage = (vehicle.kilometrage || 0) + distStep;
+          prevLatLng = pos;
+          vehicle.lastKnownPosition = pos;
+        },
+        onDone: () => {
           // === RESTITUTION DU PERSONNEL ===
           if (["cpi", "cs", "csp"].includes(building.type)) {
             const engaged = vehicle._engagedStaff || { pro: 0, vol: 0 };
@@ -2776,11 +2664,10 @@ function handleNoHospitalTransport(victimId, missionId) {
           updateVehicleListDisplay(getSafeId(building));
           applyVehicleWear(vehicle);
           scheduleAutoSave();
-        }
-      }
-
-      animateReturn();
-    });
+        },
+      });
+    }
+  });
 }
 
 function launchPatientTransport(victimId, missionId, hospitalId) {

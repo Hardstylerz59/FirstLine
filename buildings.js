@@ -196,10 +196,6 @@ function addVehicle(safeId, vehicleType) {
     status: "dc",
   };
 
-  if (VEHICLE_WATER_CAPACITY[vehicleType]) {
-    vehicle.capacityEau = VEHICLE_WATER_CAPACITY[vehicleType];
-  }
-
   building.vehicles.push(vehicle);
   building.vehicles.sort((a, b) => a.label.localeCompare(b.label));
 

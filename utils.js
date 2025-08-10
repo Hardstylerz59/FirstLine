@@ -7,19 +7,47 @@ const PATIENT_STAY_DURATION = {
   critical: 960000,
 };
 
-const VEHICLE_WATER_CAPACITY = {
-  FPT: 3000,
-};
-
 const WEATHER_TYPES = ["soleil", "nuageux", "pluie", "orageux", "neige"];
 const DAY_CYCLES = ["jour", "nuit"];
 
 // utils.js ou constants.js
-const WEATHER_CYCLE_DURATION_MINUTES = 0.1; // Météo toutes les 4 minutes
-const DAY_NIGHT_CYCLE_DURATION_MINUTES = 0.1; // Cycle jour/nuit toutes les 6 minutes
+const WEATHER_CYCLE_DURATION_MINUTES = 0.2; // Météo toutes les 4 minutes
+const DAY_NIGHT_CYCLE_DURATION_MINUTES = 0.2; // Cycle jour/nuit toutes les 6 minutes
+
+// --- Cache météo par "tuiles" de 0.25° pour éviter de trop requêter ---
+const WEATHER_TILE_SIZE_DEG = 0.25;
+const weatherCache = new Map();
+
+function getWeatherTileKey(lat, lon) {
+  const round = (v) =>
+    Math.round(v / WEATHER_TILE_SIZE_DEG) * WEATHER_TILE_SIZE_DEG;
+  return `${round(lat).toFixed(2)},${round(lon).toFixed(2)}`;
+}
+
+const VEHICLE_SPEED_BY_TYPE = {
+  VSAV: 20,
+  FPT: 23,
+  VSR: 22,
+  EPA: 23,
+  CDG: 18,
+  PATROUILLE: 18,
+  SMUR: 18,
+};
+
+// Facteur météo -> plus grand = plus lent (ms/m)
+window.WEATHER_SPEED_MULTIPLIER = {
+  soleil: 1.0,
+  nuageux: 1.0,
+  pluie: 1.5,
+  orageux: 1.5,
+  neige: 2.0,
+  brouillard: 1.5, // au cas où tu l’utilises
+};
+
+// ms/m effectif = base (par type) × facteur météo
 
 window.GameUtils = {
-  EARLY_RESPONSE_WINDOW_MS: 30000, // 1 minute
+  EARLY_RESPONSE_WINDOW_MS: 30000, // 30sec
   EARLY_RESPONSE_XP_BONUS: 10,
   EARLY_RESPONSE_MONEY_BONUS: 500,
 
@@ -295,24 +323,24 @@ function dischargePatients() {
 
 setInterval(dischargePatients, 5000); // toutes les 5 secondes
 
-const VEHICLE_MOVE_DELAY = 20;
+function fetchRouteCoords(start, end) {
+  // Normalise les points (L.LatLng possède .lat/.lng aussi)
+  const sLat = start.lat,
+    sLng = start.lng;
+  const eLat = end.lat,
+    eLng = end.lng;
 
-const VEHICLE_SPEED_BY_TYPE = {
-  /*VSAV: 20,
-  FPT: 23,
-  VSR: 22,
-  EPA: 23,
-  CDG: 18,
-  PATROUILLE: 18,
-  SMUR: 18*/
-  VSAV: 1,
-  FPT: 1,
-  VSR: 1,
-  EPA: 1,
-  CDG: 1,
-  PATROUILLE: 1,
-  SMUR: 1,
-};
+  const url =
+    `https://router.project-osrm.org/route/v1/driving/` +
+    `${sLng},${sLat};${eLng},${eLat}?overview=full&geometries=geojson`;
+
+  return fetch(url)
+    .then((res) => res.json())
+    .then((data) => {
+      const coords = data?.routes?.[0]?.geometry?.coordinates || [];
+      return coords.map(([lng, lat]) => L.latLng(lat, lng));
+    });
+}
 
 const ALLOWED_VEHICLES_BY_BUILDING = {
   cpi: ["INC", "SAP", "DIV"],
@@ -1300,3 +1328,434 @@ setInterval(() => {
     }
   });
 }, 1000);
+
+// === utils.js :: BEGIN INSERT — Route math & animator (centralisation animation) ===
+
+/**
+ * Retourne la distance (en mètres) entre deux L.LatLng.
+ * Utilise map.distance si dispo, sinon un Haversine simple.
+ */
+function __distanceMeters(a, b) {
+  try {
+    if (window.map && typeof window.map.distance === "function") {
+      return window.map.distance(a, b);
+    }
+  } catch (_) {}
+  // Fallback Haversine
+  const R = 6371000;
+  const toRad = (x) => (x * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const la1 = toRad(a.lat),
+    la2 = toRad(b.lat);
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+/**
+ * Prépare le profil de route : distances par segments, cumul, total.
+ * @param {L.LatLng[]} coords
+ * @returns {{coords:L.LatLng[], segmentDistances:number[], cumulativeDistances:number[], totalRouteDistance:number}}
+ */
+function computeRouteProfile(coords) {
+  const segmentDistances = [];
+  let totalRouteDistance = 0;
+
+  for (let i = 0; i < coords.length - 1; i++) {
+    const d = __distanceMeters(coords[i], coords[i + 1]);
+    segmentDistances.push(d);
+    totalRouteDistance += d;
+  }
+
+  const cumulativeDistances = [0];
+  for (let i = 0; i < segmentDistances.length; i++) {
+    cumulativeDistances.push(cumulativeDistances[i] + segmentDistances[i]);
+  }
+
+  return {
+    coords,
+    segmentDistances,
+    cumulativeDistances,
+    totalRouteDistance,
+  };
+}
+
+/**
+ * Calcule la position (L.LatLng) à une distance "covered" sur le profil.
+ * @param {{coords:L.LatLng[], segmentDistances:number[], cumulativeDistances:number[], totalRouteDistance:number}} profile
+ * @param {number} covered - distance parcourue en mètres
+ * @returns {L.LatLng}
+ */
+function positionAtDistance(profile, covered) {
+  const { coords, segmentDistances, cumulativeDistances } = profile;
+
+  // Cas bordures
+  if (!coords || coords.length === 0) return null;
+  if (coords.length === 1 || covered <= 0) return coords[0];
+  if (covered >= cumulativeDistances[cumulativeDistances.length - 1]) {
+    return coords[coords.length - 1];
+  }
+
+  let segmentIndex = 0;
+  while (
+    segmentIndex < cumulativeDistances.length - 1 &&
+    cumulativeDistances[segmentIndex + 1] < covered
+  ) {
+    segmentIndex++;
+  }
+
+  const a = coords[segmentIndex];
+  const b = coords[segmentIndex + 1];
+  const segDist = segmentDistances[segmentIndex] || 0;
+  const intoSegment = covered - cumulativeDistances[segmentIndex];
+  const ratio = segDist === 0 ? 0 : intoSegment / segDist;
+
+  const lat = a.lat + (b.lat - a.lat) * ratio;
+  const lng = a.lng + (b.lng - a.lng) * ratio;
+  return L.latLng(lat, lng);
+}
+
+/**
+ * Anime un marqueur le long d’un itinéraire, à une vitesse donnée (m/s).
+ * - coords: tableau de L.LatLng (au moins 2)
+ * - speedMps: vitesse en m/s (déjà factorisée météo/nuit si tu veux)
+ * - marker: (optionnel) un L.Marker existant à mettre à jour
+ * - onProgress({pos, covered, total}): rappel à chaque frame
+ * - onDone(): rappel à l’arrivée
+ * Retourne un handle { cancel() } pour stopper l’animation si besoin.
+ */
+function animateAlongRoute({
+  coords,
+  speedMps,
+  marker = null,
+  onProgress,
+  onDone,
+}) {
+  if (
+    !Array.isArray(coords) ||
+    coords.length < 2 ||
+    !isFinite(speedMps) ||
+    speedMps <= 0
+  ) {
+    // Rien à animer
+    if (marker && coords[0]) {
+      try {
+        marker.setLatLng(coords[coords.length - 1] || coords[0]);
+      } catch (_) {}
+    }
+    onDone?.();
+    return { cancel() {} };
+  }
+
+  const profile = computeRouteProfile(coords);
+  const total = profile.totalRouteDistance;
+  const startTime = Date.now();
+
+  let raf = null;
+  function step() {
+    const elapsed = Date.now() - startTime; // ms
+    const covered = Math.min((speedMps * elapsed) / 1000, total);
+    const pos = positionAtDistance(profile, covered);
+
+    if (pos && marker && marker.setLatLng) {
+      try {
+        marker.setLatLng(pos);
+      } catch (_) {}
+    }
+
+    onProgress?.({ pos, covered, total });
+
+    if (covered < total) {
+      raf = requestAnimationFrame(step);
+    } else {
+      onDone?.();
+    }
+  }
+
+  raf = requestAnimationFrame(step);
+
+  return {
+    cancel() {
+      if (raf) cancelAnimationFrame(raf);
+      raf = null;
+    },
+  };
+}
+
+// Expose utilitaires globalement pour usage depuis missions.js / ui.js
+window.RouteMath = { computeRouteProfile, positionAtDistance };
+window.RouteAnimator = { animateAlongRoute };
+
+// === utils.js :: END INSERT — Route math & animator ===
+// === STOP helper pour animations de trajets (RAF historique ou RouteAnimator) ===
+function stopActiveRoute(vehicle) {
+  if (!vehicle) return;
+  const ra = vehicle.returnAnimation;
+  // Cas historique: id numérique de requestAnimationFrame
+  if (typeof ra === "number") {
+    cancelAnimationFrame(ra);
+  }
+  // Cas RouteAnimator: handler/objet avec stop()
+  else if (ra && typeof ra.stop === "function") {
+    try {
+      ra.stop();
+    } catch (_) {}
+  }
+  vehicle.returnAnimation = null;
+  vehicle.retourEnCours = false;
+}
+
+// ==== BEGIN refactor helpers (added) ====
+
+// === Shared speed/duration helpers (idempotent) ===
+if (typeof window.getMsPerMeter !== "function") {
+  window.getMsPerMeter = function getMsPerMeter(vehicle) {
+    try {
+      return (
+        (window.VEHICLE_SPEED_BY_TYPE && VEHICLE_SPEED_BY_TYPE[vehicle.type]) ||
+        20
+      );
+    } catch (_) {
+      return 20;
+    }
+  };
+}
+if (typeof window.computeTravelDurationMs !== "function") {
+  window.computeTravelDurationMs = function computeTravelDurationMs(
+    distanceMeters,
+    msPerMeter
+  ) {
+    const f = typeof msPerMeter === "number" ? msPerMeter : 20;
+    return Math.max(0, Math.round((distanceMeters || 0) * f));
+  };
+}
+if (typeof window.setVehicleArrivalFromDistance !== "function") {
+  window.setVehicleArrivalFromDistance = function setVehicleArrivalFromDistance(
+    vehicle,
+    distanceMeters
+  ) {
+    const msPerMeter = window.getMsPerMeter
+      ? window.getMsPerMeter(vehicle)
+      : 20;
+    const duration = window.computeTravelDurationMs
+      ? window.computeTravelDurationMs(distanceMeters, msPerMeter)
+      : Math.max(0, Math.round((distanceMeters || 0) * msPerMeter));
+    vehicle.arrivalTime = Date.now() + duration;
+    return { duration, msPerMeter };
+  };
+}
+
+// === Unified route animation for vehicles ===
+if (typeof window.animateVehicleRoute !== "function") {
+  window.animateVehicleRoute = function animateVehicleRoute({
+    vehicle,
+    coords,
+    speedFactorMsPerMeter,
+    onProgress,
+    onArrival,
+  }) {
+    if (!vehicle) return null;
+    try {
+      if (typeof window.stopActiveRoute === "function")
+        window.stopActiveRoute(vehicle);
+    } catch (_) {}
+    if (!coords || coords.length < 2) {
+      try {
+        const last = coords && coords[coords.length - 1];
+        if (last) {
+          if (typeof window.progressVehicle === "function")
+            window.progressVehicle(vehicle, last);
+          if (vehicle.marker && vehicle.marker.setLatLng)
+            vehicle.marker.setLatLng(last);
+        }
+      } catch (_) {}
+      if (typeof onArrival === "function") onArrival();
+      return null;
+    }
+    const msPerMeter =
+      speedFactorMsPerMeter ||
+      (window.getMsPerMeter ? window.getMsPerMeter(vehicle) : 20);
+    const speedMps = 1000 / msPerMeter;
+    let handler = null;
+    try {
+      handler =
+        window.RouteAnimator && window.RouteAnimator.animateAlongRoute
+          ? window.RouteAnimator.animateAlongRoute({
+              coords,
+              speedMps,
+              marker: vehicle.marker,
+              onProgress: ({ pos }) => {
+                try {
+                  if (pos) {
+                    if (typeof window.progressVehicle === "function")
+                      window.progressVehicle(vehicle, pos);
+                    if (typeof onProgress === "function") onProgress(pos);
+                  }
+                } catch (_) {}
+              },
+              onDone: () => {
+                try {
+                  vehicle.returnAnimation = null;
+                  vehicle.retourEnCours = false;
+                } catch (_) {}
+                if (typeof onArrival === "function") onArrival();
+              },
+            })
+          : null;
+    } catch (_) {}
+    vehicle.returnAnimation = handler;
+    vehicle.retourEnCours = true;
+    return handler;
+  };
+}
+
+// === High-level helper: fetch route + animate ===
+if (typeof window.goVehicleTo !== "function") {
+  window.goVehicleTo = function goVehicleTo({
+    vehicle,
+    start,
+    end,
+    onProgress,
+    onArrival,
+  }) {
+    if (!vehicle || !start || !end) {
+      if (typeof onArrival === "function") onArrival();
+      return;
+    }
+    try {
+      if (!vehicle.marker && window.L && L.marker) {
+        vehicle.marker = L.marker(start).addTo(window.map || map);
+      }
+    } catch (_) {}
+    return fetchRouteCoords(start, end).then((coords) => {
+      if (!coords || coords.length < 2) {
+        try {
+          if (vehicle.marker && vehicle.marker.setLatLng)
+            vehicle.marker.setLatLng(end);
+          if (typeof window.progressVehicle === "function")
+            window.progressVehicle(vehicle, end);
+        } catch (_) {}
+        if (typeof onArrival === "function") onArrival();
+        return null;
+      }
+      const prof =
+        window.RouteMath && window.RouteMath.computeRouteProfile
+          ? window.RouteMath.computeRouteProfile(coords)
+          : { totalRouteDistance: 0 };
+      const total = prof.totalRouteDistance || 0;
+      const { msPerMeter } = window.setVehicleArrivalFromDistance
+        ? window.setVehicleArrivalFromDistance(vehicle, total)
+        : {
+            msPerMeter: window.getMsPerMeter
+              ? window.getMsPerMeter(vehicle)
+              : 20,
+          };
+      try {
+        if (typeof window.startVehicleProgress === "function")
+          window.startVehicleProgress(vehicle, coords[0]);
+      } catch (_) {}
+      return window.animateVehicleRoute({
+        vehicle,
+        coords,
+        speedFactorMsPerMeter: msPerMeter,
+        onProgress,
+        onArrival,
+      });
+    });
+  };
+}
+
+// === Staff release & arrival handling on return ===
+if (typeof window.releaseEngagedStaffToBuilding !== "function") {
+  window.releaseEngagedStaffToBuilding = function releaseEngagedStaffToBuilding(
+    vehicle,
+    building
+  ) {
+    if (!vehicle || !building) return;
+    try {
+      if (["cpi", "cs", "csp"].includes(building.type)) {
+        const engaged = vehicle._engagedStaff || { pro: 0, vol: 0 };
+        building.personnelAvailablePro =
+          (building.personnelAvailablePro || 0) + (engaged.pro || 0);
+        building.personnelAvailableVol =
+          (building.personnelAvailableVol || 0) + (engaged.vol || 0);
+        vehicle._engagedStaff = { pro: 0, vol: 0 };
+      } else {
+        building.personnelAvailable =
+          (building.personnelAvailable || 0) + (vehicle.required || 0);
+      }
+    } catch (_) {}
+  };
+}
+if (typeof window.onVehicleArrivedAtBuilding !== "function") {
+  window.onVehicleArrivedAtBuilding = function onVehicleArrivedAtBuilding(
+    vehicle,
+    building
+  ) {
+    if (!vehicle || !building) return;
+    try {
+      window.releaseEngagedStaffToBuilding &&
+        window.releaseEngagedStaffToBuilding(vehicle, building);
+      if (typeof window.updateVehicleStatus === "function")
+        window.updateVehicleStatus(vehicle, "dc");
+      vehicle.status = "dc";
+      window.logVehicleRadio &&
+        window.logVehicleRadio(vehicle, "dc", { targetBuilding: building });
+      window.applyVehicleWear && window.applyVehicleWear(vehicle);
+      const safeId = window.getSafeId ? window.getSafeId(building) : null;
+      if (typeof window.refreshVehicleStatusForBuilding === "function")
+        window.refreshVehicleStatusForBuilding(building);
+      if (typeof window.updateVehicleListDisplay === "function" && safeId)
+        window.updateVehicleListDisplay(safeId);
+      if (typeof window.refreshBuildingStatus === "function")
+        window.refreshBuildingStatus(building);
+      try {
+        const sid = safeId;
+        if (sid) {
+          const spanTotal = document.getElementById(`staff-${sid}`);
+          const spanAvail = document.getElementById(`staff-avail-${sid}`);
+          if (spanTotal) spanTotal.textContent = building.personnel || 0;
+          if (spanAvail)
+            spanAvail.textContent =
+              (["cpi", "cs", "csp"].includes(building.type) &&
+                (building.personnelAvailablePro || 0) +
+                  (building.personnelAvailableVol || 0)) ||
+              building.personnelAvailable ||
+              0;
+        }
+      } catch (_) {}
+    } catch (_) {}
+  };
+}
+if (typeof window.returnVehicleToBuilding !== "function") {
+  window.returnVehicleToBuilding = function returnVehicleToBuilding(
+    vehicle,
+    building,
+    { mission } = {}
+  ) {
+    if (!vehicle || !building) return Promise.resolve();
+    try {
+      if (typeof window.setVehicleStatus === "function")
+        window.setVehicleStatus(vehicle, "ot", { mission, building });
+      vehicle.retourEnCours = true;
+    } catch (_) {}
+    const startPoint =
+      (vehicle.marker &&
+        vehicle.marker.getLatLng &&
+        vehicle.marker.getLatLng()) ||
+      vehicle.lastKnownPosition;
+    const target = building.latlng;
+    return window.goVehicleTo({
+      vehicle,
+      start: startPoint,
+      end: target,
+      onArrival: () => {
+        window.onVehicleArrivedAtBuilding &&
+          window.onVehicleArrivedAtBuilding(vehicle, building);
+      },
+    });
+  };
+}
+// ==== END refactor helpers ====

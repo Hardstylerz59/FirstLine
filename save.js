@@ -354,6 +354,8 @@ async function saveState() {
     player,
     history,
     soundEnabled, // 👈 ici
+    currentWeather, // 👈 ajout
+    currentCycle, // 👈 ajout
     buildings: buildings.map((b) => ({
       id: b.id,
       name: b.name,
@@ -488,6 +490,16 @@ async function loadState() {
   }
 
   const state = data.data;
+  if (state.currentWeather) {
+    currentWeather = state.currentWeather;
+    updateWeatherUI();
+  }
+
+  if (state.currentCycle) {
+    currentCycle = state.currentCycle;
+    updateCycleUI();
+  }
+
   if (typeof state.soundEnabled === "boolean") {
     soundEnabled = state.soundEnabled;
     const icon = document.getElementById("sound-toggle");
