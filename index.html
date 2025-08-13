@@ -72,23 +72,27 @@
       <!-- Barre supérieure avec stats du joueur et boutons -->
       <div id="top-bar">
         <div id="player-info-container">
-          <span id="player-info">XP: 0 | Niveau: 1 | Argent: 0€</span>
-          <div id="xp-bar"><div id="xp-bar-fill"></div></div>
+          <span id="player-info">Niveau: 1 | Argent: 0€</span>
+
+          <div id="xp-block">
+            <div id="xp-label">
+              <span id="xp-earned">0</span> / <span id="xp-next">0</span>
+            </div>
+            <div id="xp-bar"><div id="xp-bar-fill"></div></div>
+          </div>
         </div>
 
         <!-- Boutons d'action rapide -->
         <button id="save-btn">💾 Sauvegarder</button>
         <button class="danger" onclick="resetAllVehiclesToCaserne()">
-          🧹 Réinitialiser véhicules
+          🧹 Réinitialiser
         </button>
         <button class="warning" onclick="clearAllVehicleMarkers()">
-          ❌ Effacer marqueurs véhicules
+          ❌ Effacer marqueurs
         </button>
         <button id="xp-details-btn">📈 Détails XP</button>
         <button id="add-money-btn">💸 +1M€</button>
-        <button id="clear-missions-btn">
-          ❌ Supprimer toutes les missions
-        </button>
+        <button id="clear-missions-btn">❌ Supprimer missions</button>
         <button id="open‑stats">📊 Stats</button>
         <button onclick="signOut()" class="danger">🚪 Se déconnecter</button>
 
@@ -132,9 +136,15 @@
             </div>
 
             <div id="missions-main">
-              <div id="missions-list-wrapper">
-                <ul id="mission-list"></ul>
+              <div id="calls-quick-actions">
+                <button id="open-calls-panel" class="fullwidth">
+                  📞 Appels en attente
+                  <span id="pending-calls-badge" class="badge">0</span>
+                </button>
               </div>
+
+              <!-- (Optionnel) on garde un UL caché pour compat rétro si du code l’utilise -->
+              <ul id="mission-list" class="hidden"></ul>
 
               <!-- Log radio en temps réel -->
               <div id="radio-log-panel" class="radio-log-panel">
@@ -305,6 +315,42 @@
       </div>
 
       <!-- Modale Prise d’appel -->
+      <!-- Panneau plein-écran : Réception des appels -->
+      <div id="calls-panel" class="hidden modal-overlay">
+        <div class="modal-content extra-large">
+          <div class="calls-header">
+            <h2>📞 Réception des appels</h2>
+            <div class="calls-stats">
+              <span>Total :</span>
+              <span id="hist-18112" class="chip">Relais 18/112 <b>0</b></span>
+              <span id="hist-15" class="chip">Centre 15 <b>0</b></span>
+              <span id="hist-17" class="chip">17 <b>0</b></span>
+              <span id="hist-total" class="chip strong">Total <b>0</b></span>
+            </div>
+          </div>
+
+          <div class="calls-table-wrapper">
+            <table id="calls-table" class="calls-table">
+              <thead>
+                <tr>
+                  <th>Identifiant</th>
+                  <th>Type</th>
+                  <th>Provenance</th>
+                  <th>Durée d'attente / traitement</th>
+                  <th>État</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="calls-tbody"></tbody>
+            </table>
+          </div>
+
+          <div class="right actions">
+            <button id="close-calls-panel">Fermer</button>
+          </div>
+        </div>
+      </div>
+
       <div id="call-modal" class="hidden modal-overlay">
         <div class="modal-content large-modal">
           <h2>📞 Prise d'appel</h2>

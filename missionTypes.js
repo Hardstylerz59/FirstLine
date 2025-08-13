@@ -298,6 +298,257 @@ function randBetween(min, max) {
 const MISSION_TYPES = {
   caserne: [
     {
+      type: "urgence_chute_relevage",
+      variants: [
+        {
+          dialogue:
+            "Ma voisine est tombée dans l’escalier, elle dit qu’elle a super mal à la hanche.",
+          label: "Chute",
+          poiTags: ["building", "residential", "steps"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Une dame âgée est tombée en marchant, elle se plaint de douleur à la hanche mais parle normalement.",
+          label: "Chute",
+          poiTags: ["highway", "footway", "residential"],
+          cycle: "",
+          meteo: ["pluie", "neige"],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Mon fils est tombé du haut du toboggan, il pleure et dit qu’il peut plus bouger le bras.",
+          label: "Chute",
+          poiTags: ["leisure", "playground"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Ma mère âgée de 86 ans est tombée en se levant et reste au sol, elle ne semble pas blessée mais ne peut pas bouger.",
+          label: "Chute",
+          poiTags: ["building", "residential"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Ma mère de 91 ans est tombée de son lit, elle n'a pas de blessure apparente mais ne peut pas se relever seule.",
+          label: "Chute",
+          poiTags: ["building", "residential"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Un enfant est tombé d’un muret et saigne abondamment du front, il est conscient mais en panique.",
+          label: "Chute",
+          poiTags: ["playground", "leisure", "park", "place"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Une personne âgée a chuté dans un escalier, suspicion de fracture.",
+          label: "Chute",
+          poiTags: ["building", "residential"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Je me suis blessé à la cheville en descendant les escaliers, la douleur est intense.",
+          label: "Chute",
+          poiTags: ["building", "residential", "steps"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+      ],
+    },
+    {
+      type: "detresse_respiratoire",
+      variants: [
+        {
+          dialogue:
+            "Un enfant a du mal à respirer, il devient bleu malgré la ventoline.",
+          label: "Détresse respiratoire",
+          poiTags: ["building", "residential"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Un homme asthmatique fait une crise dans le parc, il ne trouve plus sa ventoline.",
+          label: "Détresse respiratoire",
+          poiTags: ["leisure", "park"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Une femme dit qu’elle étouffe dans son appartement, elle tousse et a du mal à parler.",
+          label: "Détresse respiratoire",
+          poiTags: ["building", "residential"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Un joggeur est assis au sol, il dit qu’il n’arrive plus à reprendre son souffle.",
+          label: "Détresse respiratoire",
+          poiTags: ["leisure", "sports_centre", "footway"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Un adolescent est pris de panique et halète bruyamment dans la cour du lycée.",
+          label: "Détresse respiratoire",
+          poiTags: ["amenity", "school"],
+          cycle: "jour",
+          meteo: [], // CORRECTION : pas de météo ici
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+      ],
+    },
+    {
+      type: "malaise",
+      variants: [
+        {
+          dialogue:
+            "Une femme titube, elle est tombée sur le trottoir et ne parvient plus à se relever, elle semble confuse.",
+          label: "Malaise",
+          poiTags: ["highway", "footway", "place"],
+          cycle: "",
+          meteo: ["soleil", "pluie"],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Un homme s’est allongé sur un banc, il dit qu’il ne se sent pas bien, ses amis sont inquiets.",
+          label: "Malaise",
+          poiTags: ["amenity", "bench", "highway"],
+          cycle: "",
+          meteo: ["soleil"],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Une jeune femme semble désorientée dans un commerce, elle tient à peine debout.",
+          label: "Malaise",
+          poiTags: ["shop", "supermarket"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Un client vient de s’écrouler sur une chaise, il dit qu’il se sent faible mais il parle encore.",
+          label: "Malaise",
+          poiTags: ["amenity", "restaurant", "cafe"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Une personne âgée dit avoir des vertiges en sortant de la pharmacie, elle doit s'asseoir.",
+          label: "Malaise",
+          poiTags: ["shop", "pharmacy", "bench"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+      ],
+    },
+    {
+      type: "detresse_neurologique",
+      vehicles: [],
+      variants: [
+        {
+          dialogue:
+            "Mon père ne parle plus normalement et ne peut plus bouger son bras droit.",
+          label: "Détresse neurologique",
+          poiTags: ["building", "residential"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Un homme fait une crise dans le parc, il convulse au sol !",
+          label: "Détresse neurologique",
+          poiTags: ["leisure", "park", "place"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Un élève est tombé en classe, il tremble de tout son corps !",
+          label: "Détresse neurologique",
+          poiTags: ["amenity", "school"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Un jeune homme fait des gestes incohérents, il semble désorienté et tremble.",
+          label: "Détresse neurologique",
+          poiTags: ["highway", "footway", "place"],
+          cycle: "",
+          meteo: ["soleil", "brouillard"], // conditions pouvant aggraver désorientation
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+        {
+          dialogue:
+            "Une femme a perdu connaissance après s’être mise à trembler violemment.",
+          label: "Détresse neurologique",
+          poiTags: ["building", "residential"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV" }],
+        },
+      ],
+    },
+    {
       type: "incendie_batiment",
       vehicles: [],
       variants: [

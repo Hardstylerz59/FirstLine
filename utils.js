@@ -10,6 +10,11 @@ const PATIENT_STAY_DURATION = {
 const WEATHER_TYPES = ["soleil", "nuageux", "pluie", "orageux", "neige"];
 const DAY_CYCLES = ["jour", "nuit"];
 
+function getClientCycleByLocalTime() {
+  const h = new Date().getHours();
+  return h >= 22 || h < 6 ? "nuit" : "jour";
+}
+
 // utils.js ou constants.js
 const WEATHER_CYCLE_DURATION_MINUTES = 0.2; // Météo toutes les 4 minutes
 const DAY_NIGHT_CYCLE_DURATION_MINUTES = 0.2; // Cycle jour/nuit toutes les 6 minutes
@@ -24,14 +29,78 @@ function getWeatherTileKey(lat, lon) {
   return `${round(lat).toFixed(2)},${round(lon).toFixed(2)}`;
 }
 
+function _tileKey(lat, lon) {
+  const r = (v) =>
+    Math.round(v / WEATHER_TILE_SIZE_DEG) * WEATHER_TILE_SIZE_DEG;
+  return `${r(lat).toFixed(2)},${r(lon).toFixed(2)}`;
+}
+
+async function getCityName(lat, lon) {
+  const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1`;
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "RescueGame/1.0" },
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return (
+      json.address?.city ||
+      json.address?.town ||
+      json.address?.village ||
+      json.address?.municipality ||
+      json.address?.county ||
+      null
+    );
+  } catch (_) {
+    return null;
+  }
+}
+
+async function getWeatherAt(lat, lon) {
+  const key = _tileKey(lat, lon);
+  const now = Date.now();
+  const cached = weatherCache.get(key);
+  if (cached && now - cached.t < 8 * 60 * 1000) return cached.data;
+
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+  try {
+    const res = await fetch(url);
+    if (res.ok) {
+      const json = await res.json();
+      const cw = json?.current_weather;
+      if (cw) {
+        const data = {
+          weather: _mapOpenMeteoCode(cw.weathercode),
+          // ⚠️ cycle forcé par l'heure locale du joueur
+          cycle: getClientCycleByLocalTime(),
+        };
+        weatherCache.set(key, { t: now, data });
+        return data;
+      }
+    }
+  } catch (_) {}
+  // fallback: état global courant + cycle client
+  return {
+    weather: typeof currentWeather !== "undefined" ? currentWeather : "nuageux",
+    cycle: getClientCycleByLocalTime(),
+  };
+}
+
 const VEHICLE_SPEED_BY_TYPE = {
-  VSAV: 20,
+  /**VSAV: 20,
   FPT: 23,
   VSR: 22,
   EPA: 23,
   CDG: 18,
   PATROUILLE: 18,
-  SMUR: 18,
+  SMUR: 18,**/
+  VSAV: 1,
+  FPT: 1,
+  VSR: 1,
+  EPA: 1,
+  CDG: 1,
+  PATROUILLE: 1,
+  SMUR: 1,
 };
 
 // Facteur météo -> plus grand = plus lent (ms/m)
@@ -1276,9 +1345,88 @@ function generateMissionPopupContent(mission) {
   return wrapper;
 }
 
+// --- utils.js ---
+
+// ⚠️ On garde la mécanique setInterval mais on synchronise d'abord la classe
+// "selected-synced" et le type (dc/ot) entre le modal et la sidebar pour un
+// même véhicule, en se basant sur un attribut d'identité (data-vehicle-id / data-id / data-veh-id).
+
 let isBlinkOn = false;
 
+/* Helpers pour relier modal <-> sidebar par ID véhicule */
+function _getVehIdFromStatusEl(el) {
+  // essaie d'abord sur l'élément lui-même
+  const selfId =
+    el.getAttribute("data-vehicle-id") ||
+    el.getAttribute("data-id") ||
+    el.getAttribute("data-veh-id");
+  if (selfId) return selfId;
+
+  // puis remonte à un parent porteur d'ID
+  const host = el.closest("[data-vehicle-id], [data-id], [data-veh-id]");
+  if (!host) return null;
+  return (
+    host.getAttribute("data-vehicle-id") ||
+    host.getAttribute("data-id") ||
+    host.getAttribute("data-veh-id")
+  );
+}
+
+function _cssEsc(v) {
+  return String(v).replace(/["\\]/g, "\\$&");
+}
+
+function _getAllStatusPeers(vehId) {
+  const id = _cssEsc(vehId);
+  // On couvre plusieurs variantes possibles du DOM (ID sur le .status ou sur un parent)
+  return Array.from(
+    document.querySelectorAll(
+      `.status[data-vehicle-id="${id}"], [data-vehicle-id="${id}"] .status,
+       .status[data-id="${id}"],         [data-id="${id}"] .status,
+       .status[data-veh-id="${id}"],     [data-veh-id="${id}"] .status`
+    )
+  );
+}
+
+/* Synchronise la classe selected-synced et le type dc/ot entre vues */
+function _syncSelectedAcrossViews() {
+  const selected = document.querySelectorAll(".status.selected-synced");
+  selected.forEach((el) => {
+    const vehId = _getVehIdFromStatusEl(el);
+    if (!vehId) return;
+
+    const isDC = el.classList.contains("dc");
+    const isOT = el.classList.contains("ot");
+
+    _getAllStatusPeers(vehId).forEach((peer) => {
+      // Nettoie les vieux styles inline (ancienne implémentation)
+      if (peer.style && (peer.style.backgroundColor || peer.style.color)) {
+        peer.style.backgroundColor = "";
+        peer.style.color = "";
+      }
+
+      // Assure la propagation de l'état "sélectionné"
+      if (!peer.classList.contains("selected-synced")) {
+        peer.classList.add("selected-synced");
+      }
+
+      // Harmonise le type (dc/ot) sur tous les peers
+      if (isDC) {
+        peer.classList.add("dc");
+        peer.classList.remove("ot");
+      } else if (isOT) {
+        peer.classList.add("ot");
+        peer.classList.remove("dc");
+      }
+    });
+  });
+}
+
+/* Boucle de clignotement conservée (couleurs identiques à ton code) */
 setInterval(() => {
+  // 🔑 Nouveau : avant de clignoter, on synchronise modal <-> sidebar
+  _syncSelectedAcrossViews();
+
   isBlinkOn = !isBlinkOn;
 
   document.querySelectorAll(".status.selected-synced").forEach((el) => {
@@ -1304,12 +1452,18 @@ setInterval(() => {
   });
 }, 700);
 
-function clearSelectedSyncedStatus() {
-  document.querySelectorAll(".status.selected-synced").forEach((el) => {
-    el.classList.remove("selected-synced");
-    el.style.backgroundColor = "";
-    el.style.color = "";
-  });
+// utils.js (ou où est ta fonction)
+function clearSelectedSyncedStatus(scopeSelector = null) {
+  const root = scopeSelector ? document.querySelector(scopeSelector) : document;
+  if (!root) return;
+
+  root
+    .querySelectorAll(".status.selected-synced, .status.is-blinking")
+    .forEach((el) => {
+      el.classList.remove("selected-synced", "is-blinking");
+      el.style.backgroundColor = "";
+      el.style.color = "";
+    });
 }
 
 setInterval(() => {

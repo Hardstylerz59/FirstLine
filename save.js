@@ -97,23 +97,30 @@ function createBuildingFromState(b) {
   }
 }
 
+// Lecture BDD + mise en cache local. Pas d'appel Overpass ici.
 async function getOrFetchPOIsForBuilding(building) {
   if (buildingPoisMap.has(building.id)) return;
 
-  const res = await client
+  const { data, error } = await client
     .from("building_pois")
     .select("pois")
     .eq("building_id", building.id)
-    .limit(1);
+    .limit(1)
+    .maybeSingle();
 
-  const existing = res.data?.[0];
-  if (existing && Array.isArray(existing.pois) && existing.pois.length > 0) {
-    buildingPoisMap.set(building.id, existing.pois);
+  if (error) {
+    console.warn(`[POI] Erreur lecture BDD pour ${building.id}`, error);
     return;
   }
 
-  // ❌ Ne jamais appeler Overpass ici
-  console.warn(`❌ Aucun POI trouvé pour ${building.id}, ignoré.`);
+  const existing = data?.pois;
+  if (Array.isArray(existing) && existing.length > 0) {
+    buildingPoisMap.set(building.id, existing);
+    return;
+  }
+
+  // rien en BDD : on laisse vide, la phase "re-fill" s'en chargera
+  console.warn(`❌ Aucun POI en BDD pour ${building.id}.`);
 }
 
 async function fetchPOIsFromOverpass(building) {
@@ -174,6 +181,51 @@ async function fetchPOIsFromOverpass(building) {
     console.warn("Erreur chargement POIs OSM", e);
     return [];
   }
+}
+
+// Re-remplit la BDD + le cache si un bâtiment n'a aucun POI
+async function refillPOIsForBuildingIfEmpty(building) {
+  // si déjà en cache, inutile
+  if (buildingPoisMap.has(building.id)) return;
+
+  // double-check BDD (évite la course si un autre onglet a rempli)
+  const { data } = await client
+    .from("building_pois")
+    .select("pois")
+    .eq("building_id", building.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (Array.isArray(data?.pois) && data.pois.length > 0) {
+    buildingPoisMap.set(building.id, data.pois);
+    return;
+  }
+
+  // Fetch Overpass
+  const elements = await fetchPOIsFromOverpass(building);
+  if (!elements || elements.length === 0) {
+    console.warn(`⚠️ Overpass n'a retourné aucun POI pour ${building.id}.`);
+    return;
+  }
+
+  // Sauvegarde en BDD (upsert sur building_id)
+  const { error: upsertError } = await client
+    .from("building_pois")
+    .upsert(
+      { building_id: building.id, pois: elements },
+      { onConflict: "building_id" }
+    );
+
+  if (upsertError) {
+    console.warn(`[POI] Erreur upsert BDD pour ${building.id}`, upsertError);
+    return;
+  }
+
+  // Mise en cache locale
+  buildingPoisMap.set(building.id, elements);
+  console.log(
+    `✅ POI rechargés et sauvegardés pour ${building.id} (${elements.length})`
+  );
 }
 
 // ⚙️ Utilitaires d'authentification utilisateur
@@ -353,6 +405,12 @@ async function saveState() {
     version: SAVE_VERSION,
     player,
     history,
+    callStats: window.CALL_STATS || {
+      total: 0,
+      bySource: { "Relais 18/112": 0, "Centre 15": 0, 17: 0 },
+    },
+    nextCallId:
+      typeof window.NEXT_CALL_ID === "number" ? window.NEXT_CALL_ID : 0,
     soundEnabled, // 👈 ici
     currentWeather, // 👈 ajout
     currentCycle, // 👈 ajout
@@ -408,6 +466,7 @@ async function saveState() {
       })),
     })),
     missions: missions.map((m) => ({
+      hasAskedAddress: !!m.hasAskedAddress,
       id: m.id,
       type: m.type,
       realLabel: m.realLabel,
@@ -592,7 +651,6 @@ async function loadState() {
         missionsCount: v.missionsCount || 0,
         ready: v.ready ?? true,
         retourEnCours: "retourEnCours" in v ? v.retourEnCours : false,
-        capacityEau: v.capacityEau ?? VEHICLE_WATER_CAPACITY[v.type] ?? null,
       };
 
       if (v.position && v.status !== "dc") {
@@ -665,6 +723,24 @@ async function loadState() {
     refreshBuildingStatus(building);
   }
 
+  window.CALL_STATS = state.callStats || {
+    total: 0,
+    bySource: { "Relais 18/112": 0, "Centre 15": 0, 17: 0 },
+  };
+
+  // Restaurer/initialiser le compteur d'ID d'appels UNE FOIS
+  if (typeof state.nextCallId === "number") {
+    window.NEXT_CALL_ID = state.nextCallId;
+  } else {
+    const maxId = Math.max(
+      -1,
+      ...(state.missions || [])
+        .map((m) => parseInt(m.id, 10))
+        .filter((n) => Number.isFinite(n))
+    );
+    window.NEXT_CALL_ID = maxId + 1;
+  }
+
   // 🚨 Restauration des missions
   for (const ms of state.missions) {
     const li = document.createElement("li");
@@ -702,9 +778,9 @@ async function loadState() {
       marker,
       domElement: li,
       dialogue: ms.dialogue,
+      hasAskedAddress: !!ms.hasAskedAddress,
       active: ms.active,
       progressStarted: ms.progressStarted,
-      startTime: ms.startTime || null,
       durationMs:
         typeof ms.durationMs === "number" && ms.durationMs >= 0
           ? ms.durationMs
@@ -748,6 +824,9 @@ async function loadState() {
 
     updateMissionButton(mission);
   }
+
+  updatePendingBadgeAndHistory?.();
+  notifyMissionsChanged(); // pour rafraîchir un éventuel panneau déjà ouvert
 
   // 🔄 Relancer les animations en cours (véhicules / hôpital)
   missions.forEach((m) => {

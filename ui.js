@@ -1,6 +1,19 @@
 let SIMULATION_ACTIVE = false;
 let manageMissionInterval = null;
 
+// Compteurs totaux (persistés via save)
+window.CALL_STATS = window.CALL_STATS || {
+  total: 0,
+  bySource: { "Relais 18/112": 0, "Centre 15": 0, 17: 0 },
+};
+
+function incCallStatsFor(mission) {
+  window.CALL_STATS.total++;
+  const p = getProvenanceLabel(mission);
+  if (!(p in window.CALL_STATS.bySource)) window.CALL_STATS.bySource[p] = 0;
+  window.CALL_STATS.bySource[p]++;
+}
+
 const ADDRESS_INTROS = [
   "Je crois que c'est au niveau de :",
   "Ça se passe à l'adresse suivante :",
@@ -35,28 +48,68 @@ function getXpForNextLevel(level) {
   return Math.floor(100 + 50 * level + 20 * Math.sqrt(level));
 }
 
-function updatePlayerInfo() {
-  let nextLevelXP = getXpForNextLevel(player.level);
-  const progressPercent = Math.min((player.xp / nextLevelXP) * 100, 100);
-  document.getElementById("xp-bar-fill").style.width = `${progressPercent}%`;
+function formatMoney(n) {
+  return Math.round(n).toLocaleString("fr-FR");
+}
 
+function updatePlayerInfo() {
+  // Palier actuel
+  let nextLevelXP = getXpForNextLevel(player.level);
+
+  // Passage de niveaux si on a assez d’XP (conserve le surplus)
   while (player.xp >= nextLevelXP) {
+    player.xp -= nextLevelXP;
     player.level++;
-    player.xp -= nextLevelXP; // conserve le surplus XP
-    const reward = ECONOMY.xpSystem.baseReward * player.level;
+
+    const reward = Math.round(ECONOMY.xpSystem.baseReward * player.level);
     player.money += reward;
+
     showNotification(
       "level",
-      `🎉 Niveau <strong>${player.level}</strong> atteint ! +${reward}€`
+      `🎉 Niveau <strong>${player.level}</strong> atteint ! +${formatMoney(
+        reward
+      )}€`
     );
 
     nextLevelXP = getXpForNextLevel(player.level);
   }
 
+  // Valeurs pour l'UI
+  const earned = Math.max(0, Math.floor(player.xp));
+  const next = Math.max(1, Math.floor(nextLevelXP));
+  const pct = Math.min(100, Math.round((earned / next) * 100));
+
+  // Helpers DOM
+  const $ = (id) => document.getElementById(id);
+
+  // Barre d'XP
+  const fill = $("xp-bar-fill");
+  if (fill) fill.style.width = `${pct}%`;
+
+  // Libellé au-dessus de la barre: "XP acquis / XP palier"
+  const xpEarned = $("xp-earned");
+  if (xpEarned) xpEarned.textContent = earned.toLocaleString("fr-FR");
+
+  const xpNext = $("xp-next");
+  if (xpNext) xpNext.textContent = next.toLocaleString("fr-FR");
+
+  const bar = $("xp-bar");
+  if (bar) {
+    bar.title = `${earned.toLocaleString("fr-FR")} / ${next.toLocaleString(
+      "fr-FR"
+    )}`;
+  }
+
+  // Récap dans #player-info (XP acquis / palier, niveau, argent)
+  const info = $("player-info");
+  if (info) {
+    info.textContent = `Niveau: ${player.level} | Argent: ${formatMoney(
+      player.money
+    )}€`;
+  }
+
+  // Sauvegarde
   scheduleAutoSave();
-  document.getElementById(
-    "player-info"
-  ).textContent = `XP: ${player.xp} | Niveau: ${player.level} | Argent: ${player.money}€`;
 }
 
 function showNotification(type, message, duration = 4000) {
@@ -626,6 +679,10 @@ function closeCallModal() {
 
 document.getElementById("reveal-address-btn").addEventListener("click", () => {
   if (!currentCallMission) return;
+
+  currentCallMission.hasAskedAddress = true;
+  currentCallMission.labelUpdated = true;
+  notifyMissionsChanged();
 
   const { lat, lng } = currentCallMission.position;
 
@@ -3170,3 +3227,286 @@ function setupReinforcementFilterButtons() {
       });
     });
 }
+
+// === Résumé d'un appel ===
+function getProvenanceLabel(m) {
+  // sourceType est défini à la création (caserne/hopital/police)
+  switch (m.sourceType) {
+    case "caserne":
+      return "Relais 18/112";
+    case "hopital":
+      return "Centre 15";
+    case "police":
+      return "17";
+    default:
+      return m.sourceType || "—";
+  }
+}
+
+// Un appel est "déjà traité" si le jeu décide d'afficher "Gérer" plutôt que "Traiter"
+function isCallHandled(m) {
+  // Un appel est "traité" uniquement si on a réellement démarré le traitement
+  return !!m.progressStarted; // ← simple et fiable
+}
+function isCallInProgress(m) {
+  return !!m.active; // si tu différencies "en cours" vs "traité"
+}
+
+function formatDurationMs(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const hh = String(Math.floor(s / 3600)).padStart(2, "0");
+  const mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+  const ss = String(s % 60).padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
+}
+
+let callsTicker = null;
+
+function openCallsPanel() {
+  const panel = document.getElementById("calls-panel");
+  if (!panel) return;
+  buildCallsTable();
+  panel.classList.remove("hidden");
+
+  clearInterval(callsTicker);
+  callsTicker = setInterval(() => {
+    const now = Date.now();
+    for (const m of missions) {
+      const cell = document.querySelector(`td[data-call-time="${m.id}"]`);
+      if (!cell) continue;
+
+      // durée
+      if (!isCallHandled(m)) {
+        const base = m.startTime || now;
+        cell.textContent = "Depuis " + formatDurationMs(now - base);
+      } else {
+        if (cell.textContent !== "—") cell.textContent = "—";
+      }
+
+      // état texte
+      const tr = cell.closest("tr");
+      if (tr) {
+        const etatCell = tr.children[4];
+        if (etatCell) {
+          let etat = "En attente";
+          if (hasVehicleOnScene(m) && missingVehicles(m))
+            etat = "Renfort demandé";
+          else if (isCallInProgress(m)) etat = "En cours";
+          else if (isCallHandled(m)) etat = "Traité";
+          etatCell.textContent = etat;
+        }
+
+        // classes de fond (rouge/jaune/bleu) recalculées à CHAQUE tick
+        tr.classList.toggle("waiting", !isCallHandled(m));
+        tr.classList.toggle(
+          "inprogress",
+          isCallHandled(m) && isCallInProgress(m)
+        );
+        tr.classList.toggle(
+          "handled",
+          isCallHandled(m) && !isCallInProgress(m)
+        );
+      }
+    }
+    updatePendingBadgeAndHistory();
+  }, 1000);
+}
+
+function closeCallsPanel() {
+  document.getElementById("calls-panel")?.classList.add("hidden");
+  if (callsTicker) {
+    clearInterval(callsTicker);
+    callsTicker = null;
+  }
+}
+
+function buildCallsTable() {
+  const tb = document.getElementById("calls-tbody");
+  if (!tb) return;
+  tb.innerHTML = "";
+
+  missions
+    .slice() // copie
+    .sort((a, b) => Number(a.id) - Number(b.id))
+    .forEach((m) => {
+      const tr = document.createElement("tr");
+
+      const handled = isCallHandled(m);
+      const inprogress = isCallInProgress(m);
+      tr.classList.toggle("waiting", !handled);
+      tr.classList.toggle("inprogress", handled && inprogress);
+      tr.classList.toggle("handled", handled && !inprogress);
+
+      const tType = document.createElement("td");
+      const canShowType = m.hasAskedAddress || m.labelUpdated; // ← condition d’affichage
+      tType.textContent = canShowType ? getMissionTypeLabel(m) : "—";
+
+      const tId = document.createElement("td");
+      tId.textContent = m.id;
+
+      const tProv = document.createElement("td");
+      tProv.textContent = getProvenanceLabel(m);
+
+      const tTime = document.createElement("td");
+      tTime.dataset.callTime = m.id;
+
+      if (!isCallHandled(m)) {
+        const base = m.startTime || Date.now();
+        tTime.textContent = "Depuis " + formatDurationMs(Date.now() - base);
+      } else {
+        tTime.textContent = "—"; // rien quand c'est traité
+      }
+
+      const tEtat = document.createElement("td");
+      let etat = "En attente";
+      if (hasVehicleOnScene(m) && missingVehicles(m)) {
+        etat = "Renfort demandé";
+      } else if (isCallInProgress(m)) {
+        etat = "En cours";
+      } else if (isCallHandled(m)) {
+        etat = "Traité";
+      }
+      tEtat.textContent = etat;
+
+      const tAction = document.createElement("td");
+      const btn = document.createElement("button");
+      if (!handled) {
+        btn.textContent = "Traiter";
+        btn.onclick = () => {
+          closeCallsPanel();
+          openCallModal(m.id);
+        };
+      } else {
+        btn.textContent = "Gérer";
+        btn.onclick = () => {
+          closeCallsPanel();
+          openManageMission(m.id);
+        };
+      }
+      tAction.appendChild(btn);
+
+      tr.appendChild(tId);
+      tr.appendChild(tType);
+      tr.appendChild(tProv);
+      tr.appendChild(tTime);
+      tr.appendChild(tEtat);
+      tr.appendChild(tAction);
+      tb.appendChild(tr);
+    });
+
+  updatePendingBadgeAndHistory();
+}
+
+function updatePendingBadgeAndHistory() {
+  const total = window.CALL_STATS?.total || missions.length;
+  const pending = missions.filter((m) => !isCallHandled(m)).length;
+
+  const badge = document.getElementById("pending-calls-badge");
+  if (badge) badge.textContent = pending;
+
+  // Utilise les totaux persistés
+  const c18112 = window.CALL_STATS?.bySource?.["Relais 18/112"] || 0;
+  const c15 = window.CALL_STATS?.bySource?.["Centre 15"] || 0;
+  const c17 = window.CALL_STATS?.bySource?.["17"] || 0;
+
+  const put = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.querySelector("b").textContent = String(val);
+  };
+  put("hist-18112", c18112);
+  put("hist-15", c15);
+  put("hist-17", c17);
+  put("hist-total", total);
+}
+
+// wiring des boutons
+document
+  .getElementById("open-calls-panel")
+  ?.addEventListener("click", openCallsPanel);
+document
+  .getElementById("close-calls-panel")
+  ?.addEventListener("click", closeCallsPanel);
+
+// appelle au chargement et après chaque création/suppression de mission
+setInterval(updatePendingBadgeAndHistory, 2000);
+
+// === missiontypes => libellé humain
+function getMissionTypeLabel(m) {
+  // suivant comment missiontypes est structuré chez toi (objet ou tableau)
+  let label = null;
+  if (window.missiontypes) {
+    if (Array.isArray(window.missiontypes)) {
+      const mt = window.missiontypes.find(
+        (x) => x.type === m.type || x.id === m.type
+      );
+      label = mt?.label || mt?.name;
+    } else {
+      label =
+        window.missiontypes[m.type]?.label || window.missiontypes[m.type]?.name;
+    }
+  }
+  // fallback
+  return (
+    label ||
+    m.realLabel ||
+    m.label ||
+    (m.type || "").replaceAll("_", " ")
+  ).toUpperCase();
+}
+
+// Véhicule sur place ?
+function hasVehicleOnScene(m) {
+  return (m.dispatched || []).some(
+    (d) => !d.canceled && d.vehicle && d.vehicle.status === "at"
+  );
+}
+
+// Manque-t-il des véhicules par rapport aux besoins ?
+function missingVehicles(m) {
+  if (!Array.isArray(m.vehicles) || m.vehicles.length === 0) return false;
+  const requiredByType = m.vehicles.reduce(
+    (acc, t) => ((acc[t] = (acc[t] || 0) + 1), acc),
+    {}
+  );
+  const sentByType = (m.dispatched || []).reduce((acc, d) => {
+    if (d.canceled || !d.vehicle) return acc;
+    const t = d.vehicle.type;
+    acc[t] = (acc[t] || 0) + 1;
+    return acc;
+  }, {});
+  return Object.keys(requiredByType).some(
+    (t) => (sentByType[t] || 0) < requiredByType[t]
+  );
+}
+
+// Bus d'événements "missions"
+function notifyMissionsChanged() {
+  document.dispatchEvent(new Event("missions:changed"));
+}
+
+document.addEventListener("missions:changed", () => {
+  const panel = document.getElementById("calls-panel");
+  if (panel && !panel.classList.contains("hidden")) {
+    buildCallsTable(); // reconstruit proprement la table visible
+  }
+  updatePendingBadgeAndHistory();
+});
+
+function pulseCallsButton() {
+  const btn = document.getElementById("open-calls-panel");
+  const panelOpen = !document
+    .getElementById("calls-panel")
+    ?.classList.contains("hidden");
+  if (btn && !panelOpen) {
+    btn.classList.add("notify");
+  }
+}
+
+function clearPulseCallsButton() {
+  document.getElementById("open-calls-panel")?.classList.remove("notify");
+}
+
+// Quand on ouvre le panel on arrête le clignotement
+document
+  .getElementById("open-calls-panel")
+  ?.addEventListener("click", clearPulseCallsButton);

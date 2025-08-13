@@ -12,6 +12,80 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "&copy; OpenStreetMap contributors",
 }).addTo(map);
 
+let _weatherMoveTimer = null;
+let _cityReqId = 0;
+
+// Mémo du dernier point qui a servi à MAJ la météo/ville
+let _lastWeatherQuery = {
+  lat: null,
+  lng: null,
+  city: null,
+  zoom: null,
+};
+
+// distance Haversine (m)
+function _distMeters(a, b) {
+  const toRad = (x) => (x * Math.PI) / 180;
+  const R = 6371000;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const sLat1 = toRad(a.lat);
+  const sLat2 = toRad(b.lat);
+  const x =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(sLat1) * Math.cos(sLat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+
+map.on("moveend", () => {
+  if (_weatherMoveTimer) clearTimeout(_weatherMoveTimer);
+
+  _weatherMoveTimer = setTimeout(async () => {
+    const c = map.getCenter();
+    const zoom = map.getZoom();
+
+    // 1) Si c'est juste un zoom (centre quasi identique), on ne fait rien
+    if (_lastWeatherQuery.lat != null) {
+      const d = _distMeters(
+        { lat: _lastWeatherQuery.lat, lng: _lastWeatherQuery.lng },
+        { lat: c.lat, lng: c.lng }
+      );
+      if (d < 100) {
+        // seuil 100 m : ajuste 50–200 m si besoin
+        return;
+      }
+    }
+
+    // 2) Vérifier si on reste dans la même ville → dans ce cas on ne met rien à jour
+    const myId = ++_cityReqId; // anti-race
+    let city = null;
+    try {
+      city = await getCityName(c.lat, c.lng);
+    } catch (_) {
+      // si échec, on tombera sur la règle distance uniquement
+    }
+    if (myId !== _cityReqId) return; // réponse obsolète
+
+    // Même ville qu'affichée précédemment ? Alors on ne fait rien.
+    if (city && _lastWeatherQuery.city && city === _lastWeatherQuery.city) {
+      // Met quand même à jour la mémoire du centre (au cas où)
+      _lastWeatherQuery = { lat: c.lat, lng: c.lng, city, zoom };
+      return;
+    }
+
+    // 3) Nouvelle ville (ou première fois) → on met à jour météo + UI
+    if (typeof fetchAndApplyWeather === "function") {
+      await fetchAndApplyWeather(c.lat, c.lng);
+    }
+    // On passe la ville déjà résolue pour éviter un second géocodage
+    updateWeatherUI(city);
+
+    _lastWeatherQuery = { lat: c.lat, lng: c.lng, city: city || null, zoom };
+  }, 600); // debounce
+});
+
+updateCycleUI(); // au chargement
+
 // === ÉTATS INTERNES DE L’INTERFACE CARTE ===
 let addMode = false; // Mode ajout activé ?
 let currentBuilding = null; // Bâtiment en cours de création

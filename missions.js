@@ -3,47 +3,122 @@ let isLoadingPOIs = false;
 let currentWeather = "soleil";
 let currentCycle = "jour";
 
-function startEnvironmentCycle() {
-  // Changement météo
-  setInterval(() => {
-    currentWeather =
-      WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
-    updateWeatherUI();
-    scheduleAutoSave();
-  }, 1000 * 60 * WEATHER_CYCLE_DURATION_MINUTES);
+let lastTemperatureC = null;
+// Compteur global des identifiants d'appels (persisté via save.js)
+window.NEXT_CALL_ID = window.NEXT_CALL_ID ?? 0;
 
-  // Changement jour/nuit
+function startEnvironmentCycle() {
+  // 1) Premier fetch au centre de la carte
+  const c = map.getCenter();
+  fetchAndApplyWeather(c.lat, c.lng, { force: true });
+
+  // 2) Rafraîchit toutes les 10 min au centre de la carte
   setInterval(() => {
-    currentCycle = currentCycle === "jour" ? "nuit" : "jour";
-    updateCycleUI();
+    const center = map.getCenter();
+    fetchAndApplyWeather(center.lat, center.lng);
     scheduleAutoSave();
-  }, 1000 * 60 * DAY_NIGHT_CYCLE_DURATION_MINUTES);
+  }, 10 * 60 * 1000);
 }
 
-function updateWeatherUI() {
+async function fetchAndApplyWeather(lat, lon, { force = false } = {}) {
+  const key =
+    typeof getWeatherTileKey === "function"
+      ? getWeatherTileKey(lat, lon)
+      : `${lat.toFixed(2)},${lon.toFixed(2)}`;
+  const cached =
+    weatherCache && weatherCache.get ? weatherCache.get(key) : null;
+  const now = Date.now();
+
+  // Cache 8 minutes
+  if (!force && cached && now - cached.t < 8 * 60 * 1000) {
+    applyWeatherData(cached.data);
+    return;
+  }
+
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+  const res = await fetch(url).catch(() => null);
+  if (!res || !res.ok) return;
+
+  const json = await res.json().catch(() => null);
+  if (!json || !json.current_weather) return;
+
+  const cw = json.current_weather; // { temperature, windspeed, winddirection, weathercode, is_day, time }
+  const data = {
+    temp: cw.temperature,
+    code: cw.weathercode,
+    isDay: cw.is_day === 1,
+  };
+
+  if (weatherCache && weatherCache.set) weatherCache.set(key, { t: now, data });
+  applyWeatherData(data);
+}
+
+function mapOpenMeteoCode(code) {
+  if (code === 0) return "soleil"; // ciel clair
+  if ([1, 2, 3].includes(code)) return "nuageux"; // peu à couvert
+  if ([45, 48].includes(code)) return "brouillard";
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return "pluie";
+  if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return "neige";
+  if ([95, 96, 99].includes(code)) return "orageux";
+  return "nuageux";
+}
+
+function applyWeatherData(d) {
+  currentWeather = mapOpenMeteoCode(d.code);
+  currentCycle = d.isDay ? "jour" : "nuit";
+  lastTemperatureC = Math.round(d.temp);
+  updateWeatherUI();
+  updateCycleUI();
+}
+
+async function updateWeatherUI(cityOverride = null) {
   const iconMap = {
     soleil: "sun.png",
     pluie: "rain.png",
     orageux: "storm.png",
     neige: "snow.png",
     brouillard: "fog.png",
+    nuageux: "cloud.png",
   };
 
-  const label =
-    currentWeather.charAt(0).toUpperCase() + currentWeather.slice(1);
-  document.getElementById("weather-label").textContent = label;
-  document.getElementById("weather-icon").src = `assets/weather/${
-    iconMap[currentWeather] || "sun.png"
-  }`;
+  // Texte météo (sans température)
+  const base = currentWeather
+    ? currentWeather[0].toUpperCase() + currentWeather.slice(1)
+    : "—";
+
+  // Ville selon centre de la carte
+  let cityStr = "";
+  try {
+    const c = map.getCenter();
+    const city = cityOverride ?? (await getCityName(c.lat, c.lng));
+    if (city) cityStr = ` · ${city}`;
+    // Optionnel : mémoriser la dernière ville affichée si tu en tiens une globale ailleurs
+    // _lastWeatherQuery.city = city; // si map.js est importé et variable visible
+  } catch (_) {}
+
+  const labelEl = document.getElementById("weather-label");
+  if (labelEl) labelEl.textContent = base + cityStr;
+
+  const iconEl = document.getElementById("weather-icon");
+  if (iconEl)
+    iconEl.src = `assets/weather/${iconMap[currentWeather] || "sun.png"}`;
 }
 
+// Cycle jour/nuit selon l’heure locale (ignorer les API)
 function updateCycleUI() {
-  const icon = currentCycle === "jour" ? "day.png" : "night.png";
-  const label = currentCycle.charAt(0).toUpperCase() + currentCycle.slice(1);
-  document.getElementById("cycle-label").textContent = label;
-  document.getElementById("cycle-icon").src = `assets/weather/${icon}`;
-  //document.body.classList.toggle("night-mode", currentCycle === "nuit");
+  const cycle = getClientCycleByLocalTime();
+  currentCycle = cycle; // garder cohérent avec le reste du jeu
+
+  const label = document.getElementById("cycle-label");
+  if (label) label.textContent = cycle === "nuit" ? "Nuit" : "Jour";
+
+  const icon = document.getElementById("cycle-icon");
+  if (icon)
+    icon.src = `assets/weather/${cycle === "nuit" ? "night.png" : "day.png"}`;
 }
+
+// Rafraîchir automatiquement le cycle toutes les minutes
+setInterval(updateCycleUI, 60 * 1000);
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -52,23 +127,48 @@ function sleep(ms) {
 async function preloadAllPOIs() {
   console.log("📍 Préchargement des POIs...");
 
+  // 1) Premier passage : on remplit au max depuis la BDD (pas d'Overpass)
   const allPreloaded = buildings.every((b) => buildingPoisMap.has(b.id));
-  if (allPreloaded) {
-    console.log("✅ Tous les POIs sont déjà présents en cache. Aucun appel.");
-    return;
+  if (!allPreloaded) {
+    isLoadingPOIs = true;
+    const loader = document.getElementById("loader-pois");
+    loader?.classList.remove("hidden");
+
+    for (const building of buildings) {
+      await getOrFetchPOIsForBuilding(building);
+      await sleep(120); // doux pour la BDD/UI
+    }
+
+    loader?.classList.add("hidden");
+    isLoadingPOIs = false;
   }
 
-  isLoadingPOIs = true;
-  const loader = document.getElementById("loader-pois");
-  loader.classList.remove("hidden");
+  // 2) Si la BDD est vide (ou partiellement vide), on "répare" en rechargeant via Overpass
+  const missing = buildings.filter((b) => !buildingPoisMap.has(b.id));
+  if (missing.length > 0) {
+    console.log(
+      `🧭 Réparation POI: ${missing.length} bâtiment(s) sans POI -> Overpass + upsert`
+    );
 
-  for (const building of buildings) {
-    await getOrFetchPOIsForBuilding(building);
-    await sleep(200); // pour éviter toute surcharge
+    isLoadingPOIs = true;
+    const loader = document.getElementById("loader-pois");
+    loader?.classList.remove("hidden");
+
+    // Throttle Overpass pour rester gentil (5s radius large => 250–500ms mini)
+    for (const building of missing) {
+      await refillPOIsForBuildingIfEmpty(building);
+      await sleep(400); // ajuste si besoin
+    }
+
+    loader?.classList.add("hidden");
+    isLoadingPOIs = false;
   }
 
-  loader.classList.add("hidden");
-  isLoadingPOIs = false;
+  // 3) Log final
+  const totalCached = buildings.filter((b) => buildingPoisMap.has(b.id)).length;
+  console.log(
+    `✅ Préchargement terminé. POI en cache: ${totalCached}/${buildings.length}`
+  );
 }
 
 // === Helpers progress kilométrage/position (globaux pour UI aussi) ===
@@ -141,7 +241,8 @@ if (typeof window.stopActiveRoute !== "function") {
   };
 }
 
-function createMission() {
+// Remplace ENTIEREMENT ta fonction par ceci
+async function createMission() {
   if (missions.length >= buildings.length + 1 || buildings.length === 0) return;
 
   const origin = buildings[Math.floor(Math.random() * buildings.length)];
@@ -158,67 +259,148 @@ function createMission() {
   );
   if (missionsEligible.length === 0) return;
 
+  // Mission de base tirée au sort parmi les éligibles
   let selected =
     missionsEligible[Math.floor(Math.random() * missionsEligible.length)];
 
-  // Variante : choisir une version adaptée à la météo / cycle
-  let variant = null;
-  if (selected.variants && Array.isArray(selected.variants)) {
-    const eligibleVariants = selected.variants.filter((v) => {
-      const meteoOk =
-        !v.meteo || v.meteo.length === 0 || v.meteo.includes(currentWeather);
-      const cycleOk =
-        !v.cycle || v.cycle.length === 0 || v.cycle.includes(currentCycle);
-      return meteoOk && cycleOk;
-    });
+  // ---------- POI + MÉTÉO + VARIANTE ----------
+  const shuffle = (arr) => {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = (Math.random() * (i + 1)) | 0;
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  };
 
-    if (eligibleVariants.length === 0) return;
-    variant =
-      eligibleVariants[Math.floor(Math.random() * eligibleVariants.length)];
-  } else {
-    variant = {
-      dialogue: selected.dialogue,
-      label: selected.label,
-      poiTags: selected.poiTags || [],
-      victimCount: selected.victimCount || { min: 0, max: 0 },
-      cycle: selected.cycle || "",
-      meteo: selected.meteo || [],
-      vehicles: selected.vehicles || [],
-    };
+  // Variantes (sinon on traite la mission "base" comme une variante)
+  const variantsPool =
+    Array.isArray(selected.variants) && selected.variants.length
+      ? [...selected.variants]
+      : [
+          {
+            dialogue: selected.dialogue,
+            label: selected.label,
+            poiTags: selected.poiTags || [],
+            victimCount: selected.victimCount || { min: 0, max: 0 },
+            cycle: Array.isArray(selected.cycle)
+              ? selected.cycle
+              : selected.cycle
+              ? [selected.cycle]
+              : [],
+            meteo: Array.isArray(selected.meteo)
+              ? selected.meteo
+              : selected.meteo
+              ? [selected.meteo]
+              : [],
+            vehicles: selected.vehicles || [],
+            _source: "base",
+          },
+        ];
+  shuffle(variantsPool);
+
+  // POI autour du bâtiment d’origine
+  const poisAtOrigin = buildingPoisMap.get(origin.id) || [];
+
+  // Recherche d'une combinaison Variante x POI qui matche météo/cycle au point exact
+  let variant = null;
+  let latlng = null;
+  let localWeather = null;
+
+  for (const v of variantsPool) {
+    // Tags requis : priorité à la variante, sinon ceux de la mission
+    const tags =
+      Array.isArray(v.poiTags) && v.poiTags.length
+        ? v.poiTags
+        : selected.poiTags || [];
+
+    let candidatePositions = [];
+    if (tags.length) {
+      const matchingPois = poisAtOrigin.filter((poi) =>
+        tags.some((t) => poi.tags?.[t])
+      );
+      if (!matchingPois.length) {
+        // Aucun POI compatible → on essaie la variante suivante
+        continue;
+      }
+      shuffle(matchingPois);
+      candidatePositions = matchingPois.map((p) => L.latLng(p.lat, p.lng));
+    } else {
+      // Pas de contrainte POI → autorise placement libre près de l’origine
+      const lat = origin.latlng.lat + (Math.random() - 0.5) * 0.05;
+      const lng = origin.latlng.lng + (Math.random() - 0.5) * 0.05;
+      candidatePositions = [L.latLng(lat, lng)];
+    }
+
+    for (const pos of candidatePositions) {
+      let lw = {
+        weather: currentWeather,
+        cycle: getClientCycleByLocalTime(),
+      };
+      try {
+        lw = await getWeatherAt(pos.lat, pos.lng);
+      } catch (err) {
+        console.warn("⚠️ Erreur getWeatherAt:", err);
+      }
+
+      const meteoOk = !v.meteo?.length || v.meteo.includes(lw.weather);
+      const cycleOk = !v.cycle?.length || v.cycle.includes(lw.cycle);
+
+      if (meteoOk && cycleOk) {
+        variant = v;
+        latlng = pos;
+        localWeather = lw;
+        break;
+      }
+    }
+    if (variant) break;
   }
 
-  // Appliquer les données du variant à selected
-  selected.dialogue = variant.dialogue;
-  selected.label = variant.label;
-  selected.poiTags = variant.poiTags || [];
-  selected.victimCount = variant.victimCount || { min: 0, max: 0 };
-  selected.vehicles = variant.vehicles || selected.vehicles || [];
+  // Rien de compatible → on ne crée pas de mission « au milieu de nulle part »
+  if (!variant || !latlng) {
+    console.warn(
+      "[Mission] Aucune variante/POI compatible avec la météo/cycle."
+    );
+    return;
+  }
 
-  // 🛠️ RÉENRICHISSEMENT après affectation des véhicules corrects
+  // Logs debug (identiques à tes habitudes)
+  console.log("%c[Mission] Spawn", "color:#0ff;font-weight:bold", {
+    lat: latlng.lat,
+    lng: latlng.lng,
+  });
+  console.log("%c[Mission] Météo utilisée", "color:#8f8;font-weight:bold", {
+    weather: localWeather.weather,
+    cycle: localWeather.cycle,
+  });
+  console.log(
+    "%c[Mission] Variante retenue",
+    "color:#6cf;font-weight:bold",
+    variant
+  );
+
+  // Appliquer la variante SANS écraser par undefined
+  selected = {
+    ...selected,
+    dialogue: variant.dialogue ?? selected.dialogue,
+    label: variant.label ?? selected.label,
+    poiTags: Array.isArray(variant.poiTags)
+      ? variant.poiTags
+      : selected.poiTags || [],
+    victimCount: variant.victimCount ||
+      selected.victimCount || { min: 0, max: 0 },
+    vehicles:
+      Array.isArray(variant.vehicles) && variant.vehicles.length
+        ? variant.vehicles
+        : selected.vehicles || [],
+  };
+  // ---------- FIN POI + MÉTÉO + VARIANTE ----------
+
+  // Ré-enrichissement après affectation des véhicules corrects
   const enriched = enrichMissionBase(selected, realType);
 
-  // Génération de position
-  let latlng = null;
-  if (enriched.poiTags.length > 0) {
-    const pois = buildingPoisMap.get(origin.id);
-    if (!pois) return;
-    const matchingPois = pois.filter((poi) =>
-      enriched.poiTags.some((tag) => poi.tags?.[tag])
-    );
-    if (matchingPois.length > 0) {
-      const poi = matchingPois[Math.floor(Math.random() * matchingPois.length)];
-      latlng = L.latLng(poi.lat, poi.lng);
-    }
-  }
-
-  if (!latlng) {
-    const lat = origin.latlng.lat + (Math.random() - 0.5) * 0.05;
-    const lng = origin.latlng.lng + (Math.random() - 0.5) * 0.05;
-    latlng = L.latLng(lat, lng);
-  }
-
+  // Création de l’objet mission (inchangé)
   const mission = {
-    id: Date.now().toString(),
+    id: String(window.NEXT_CALL_ID++),
     type: enriched.type,
     realLabel: enriched.label,
     realType: enriched.type,
@@ -229,6 +411,8 @@ function createMission() {
     duration: enriched.duration,
     durationMs: enriched.durationMs,
     vehicles: enriched.vehicles || [],
+    hasAskedAddress: false, // ← NEW
+    labelUpdated: false, // si déjà présent, on le garde
     position: latlng,
     marker: null,
     active: false,
@@ -240,6 +424,7 @@ function createMission() {
     victims: generateVictims(enriched),
     startTime: Date.now(),
     variantUsed: variant,
+    weatherAtSpawn: localWeather,
   };
 
   const li = document.createElement("li");
@@ -255,15 +440,20 @@ function createMission() {
   mission.timerElement = li.querySelector(".mission-timer");
   mission.domElement = li;
 
-  missionList.appendChild(li);
+  //missionList.appendChild(li);
   missions.push(mission);
+  incCallStatsFor(mission);
+
+  // MAJ UI live (panneau ouvert) + badge + clignotement du bouton
+  notifyMissionsChanged();
+  pulseCallsButton();
+  updatePendingBadgeAndHistory?.();
 
   const icon = L.icon({
     iconUrl: "assets/icons/mission.png",
     iconSize: [28, 28],
     iconAnchor: [14, 28],
   });
-
   const marker = L.marker(latlng, { icon })
     .addTo(map)
     .bindPopup(
@@ -1255,6 +1445,7 @@ function dispatchVehicleToMission(vehicle, mission, building) {
     });
     // --- Fin remplacement ---
   });
+  notifyMissionsChanged();
 }
 
 function returnVehicleToCaserne(vehicle, building) {
