@@ -609,6 +609,179 @@ button.secondary:hover {
 }
 
 /* === AUTRES === */
+/* ===== Call modal XL (même gabarit que réception) ===== */
+.modal-content.extra-large {
+  width: 1280px; /* largeur cible desktop */
+  max-width: calc(100vw - 96px); /* même marges latérales que la réception */
+  border-radius: 10px;
+}
+
+.modal-content.extra-large .modal-header,
+.modal-content.extra-large .modal-footer {
+  padding: 18px 22px;
+}
+
+.modal-content.extra-large .modal-body {
+  padding: 0 22px 18px 22px;
+  max-height: calc(100vh - 220px); /* hauteur utile (header+footer+marges) */
+  overflow: auto; /* scroll interne comme la réception */
+}
+
+/* verrouillage du scroll arrière-plan quand une modale est ouverte */
+body.modal-open {
+  overflow: hidden;
+}
+
+/* mêmes espacements/typos que réception */
+.modal-content.extra-large h2,
+.modal-content.extra-large .modal-title {
+  font-size: 22px;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.modal-content.extra-large .form-row {
+  margin: 10px 0 14px;
+}
+
+.modal-content.extra-large label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.modal-content.extra-large select,
+.modal-content.extra-large textarea,
+.modal-content.extra-large input[type="text"] {
+  width: 100%;
+  min-height: 38px;
+}
+
+.modal-content.extra-large textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+/* boutons Pompiers / Police harmonisés */
+/* ======== CALL LAYOUT (NEXSIS-LIKE) ======== */
+.modal-content.extra-large .modal-body {
+  max-height: calc(100vh - 210px);
+  overflow: auto;
+}
+
+.call-grid {
+  display: grid;
+  grid-template-columns: 2fr 1.1fr 1.2fr 1.6fr 1.1fr; /* Carte • Adresse • Départ • Véhicules • Récap */
+  gap: 14px;
+  min-height: calc(82vh - 40px);
+  padding: 6px 2px 14px 2px;
+}
+
+.call-card {
+  background: #fff;
+  border: 1px solid #d7e2ea;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  min-height: 100px;
+}
+
+.call-card-h {
+  padding: 10px 12px;
+  font-weight: 700;
+  border-bottom: 1px solid #e8eff6;
+  color: #2b3c4f;
+}
+
+.call-row {
+  padding: 10px 12px;
+}
+.full {
+  width: 100%;
+}
+
+.label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.addr-box {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid #d7e2ea;
+  border-radius: 6px;
+  background: #f8fbfe;
+  font-size: 14px;
+}
+
+#call-mini-map {
+  height: 100%;
+  min-height: 300px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* segmented buttons */
+#btn-service-pompiers,
+#btn-service-police {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #cbd6df;
+  background: #eef3f8;
+}
+#btn-service-pompiers.active,
+#btn-service-police.active {
+  background: #5e7997;
+  color: #fff;
+  border-color: #5e7997;
+}
+
+/* recap */
+.recap {
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.recap-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.recap-k {
+  width: 92px;
+  font-weight: 600;
+  color: #304354;
+}
+.recap-v {
+  flex: 1;
+  color: #22313f;
+  word-break: break-word;
+}
+.recap-ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+/* responsive */
+@media (max-width: 1600px) {
+  .call-grid {
+    grid-template-columns: 1.8fr 1fr 1.1fr 1.5fr 1fr;
+  }
+}
+@media (max-width: 1360px) {
+  .call-grid {
+    grid-template-columns: 1.8fr 1fr 1fr;
+  }
+  #call-card-vehicles,
+  #call-card-recap {
+    grid-column: 1 / -1;
+  }
+}
 
 .modal-section {
   margin-bottom: 24px;
@@ -1688,11 +1861,10 @@ th.sorted {
 
 /* Panneau d'appels quasi pleine page */
 .modal-content.extra-large {
-  width: 92vw;
-  max-width: 1400px;
-  height: 82vh;
-  display: flex;
-  flex-direction: column;
+  width: 96vw;
+  max-width: 1680px;
+  max-height: 85vh; /* ↓ réduit pour éviter le scroll fantôme */
+  overflow: auto;
 }
 
 .calls-header {
@@ -1798,4 +1970,92 @@ th.sorted {
 /* Pas de "clignotement" du hover quand on met à jour les secondes */
 .calls-table button {
   transition: background-color 0.15s ease, color 0.15s ease;
+}
+/* Modale XL : moins haute pour éviter le scroll fantôme */
+.modal-content.extra-large {
+  width: 96vw;
+  max-width: 1680px;
+  max-height: 90vh; /* ↓ au lieu de 96vh */
+  overflow: auto;
+}
+
+/* le contenu interne peut scroller si besoin */
+.modal-content.extra-large {
+  overflow: auto;
+}
+
+/* grille plus haute pour profiter de la place */
+.call-grid {
+  display: grid;
+  grid-template-columns: 2.4fr 1.4fr 1.6fr 1.1fr; /* Carte plus large */
+  gap: 14px;
+  min-height: calc(65vh - 32px);
+  padding: 6px 2px 14px 2px;
+}
+
+/* Encadré dialogue qui prend toute la largeur */
+.span-all {
+  grid-column: 1 / -1;
+}
+
+#call-mini-map {
+  min-height: 280px;
+  border-radius: 6px;
+  overflow: hidden;
+} /* ↓ hauteur */
+
+/* Lignes véhicules: grille propre (plus de superposition) */
+.vehicle-select-row {
+  display: grid !important; /* force sur flex éventuel */
+  grid-template-columns: 22px 1fr 90px auto; /* [☑] [Libellé] [Distance] [Statut] */
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+.vehicle-select-row .vehicle-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vehicle-select-row .vehicle-distance {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  min-width: 70px;
+}
+
+/* Statut (DC/OT…) en badge */
+.vehicle-select-row .status {
+  justify-self: end;
+  white-space: nowrap;
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive */
+@media (max-width: 1360px) {
+  .call-grid {
+    grid-template-columns: 1.8fr 1.4fr;
+  }
+  #call-card-vehicles,
+  #call-card-recap {
+    grid-column: 1 / -1;
+  }
+}
+
+/* mini-carte un peu plus haute */
+#call-mini-map {
+  min-height: 380px;
+}
+
+/* points de rupture : garder large */
+@media (min-width: 1800px) {
+  .modal-content.extra-large {
+    max-width: 1760px;
+  }
 }

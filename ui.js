@@ -225,28 +225,50 @@ let vehicleListInterval = null;
 
 function openCallModal(missionId) {
   currentCallMission = missions.find((m) => m.id === missionId);
+  if (!currentCallMission.createdAt) {
+    currentCallMission.createdAt = Date.now();
+  }
   document.getElementById("depart-type-section").classList.add("hidden");
-
   if (!currentCallMission) return;
 
-  const addrEl = document.getElementById("call-address");
+  const addrP = document.getElementById("call-address"); // ancien <p> (caché)
+  const addrBox = document.getElementById("call-confirmed-address"); // nouveau encadré
   const revealBtn = document.getElementById("reveal-address-btn");
 
+  // ---- Adresse déjà connue ?
   if (currentCallMission.address) {
-    addrEl.textContent = currentCallMission.address;
-    addrEl.classList.remove("hidden");
+    if (addrP) {
+      addrP.textContent = currentCallMission.address;
+      addrP.classList.remove("hidden");
+    }
+    if (addrBox) addrBox.textContent = currentCallMission.address;
     revealBtn.classList.add("hidden");
-    // ✅ Affiche le menu départ type si l'adresse existe
+
+    // afficher les sélecteurs
     document.getElementById("depart-type-section").classList.remove("hidden");
     buildDepartTreeUI();
+
+    // Observations (liaison)
+    const obsEl = document.getElementById("call-observations");
+    if (obsEl) {
+      obsEl.value = currentCallMission.observations || "";
+      obsEl.oninput = (e) => {
+        currentCallMission.observations = e.target.value;
+        refreshRecap();
+        if (typeof scheduleAutoSave === "function") scheduleAutoSave();
+      };
+    }
   } else {
-    addrEl.textContent = "";
-    addrEl.classList.add("hidden");
+    if (addrP) {
+      addrP.textContent = "";
+      addrP.classList.add("hidden");
+    }
+    if (addrBox) addrBox.textContent = "—";
     revealBtn.classList.remove("hidden");
-    // ✅ Masque le menu départ type si aucune adresse
     document.getElementById("depart-type-section").classList.add("hidden");
   }
 
+  // ---- Dialogue d'ouverture
   const dialogueEl = document.getElementById("call-dialogue");
   if (currentCallMission.callDisplayed) {
     dialogueEl.textContent = currentCallMission.dialogue;
@@ -259,21 +281,48 @@ function openCallModal(missionId) {
     typewriterEffect(dialogueEl, dialogueText, 35);
     currentCallMission.callDisplayed = true;
   }
-  buildDepartTreeUI(); // ⬅ ta fonction qui génère les boutons d'arborescence
 
+  // Menus (au cas où)
+  buildDepartTreeUI();
+
+  // Section véhicules
   document.getElementById("vehicle-selection-section").classList.add("hidden");
   document.getElementById("vehicle-list").innerHTML = "";
   document.getElementById("launch-mission-btn").classList.add("hidden");
+
+  // Ouvrir la modale
   document.getElementById("call-modal").classList.remove("hidden");
+  document.body.classList.add("modal-open");
 
-  // Affichage initial de la liste (avec sélection auto au premier affichage)
-  buildVehicleListForCall(true); // par exemple
+  // Si le texte d'adresse est rempli après coup (typewriter / BAN / etc.),
+  // on le capte automatiquement et on MAJ le récap.
+  const addrNode = document.getElementById("call-address");
+  if (addrNode && !addrNode._addrObserver) {
+    const mo = new MutationObserver(() => updateAddressFromUI());
+    mo.observe(addrNode, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+    addrNode._addrObserver = mo;
+  }
 
-  // Refresh toutes les secondes (live update sans casser les interactions)
+  // Mini-carte
+  createCallMiniMap();
+  syncCallMiniMap();
+
+  // Premier build + autosélection
+  buildVehicleListForCall(true);
+
+  // Récap initial
+  refreshRecap();
+
+  // Refresh live des distances/états
   clearInterval(vehicleListInterval);
   vehicleListInterval = setInterval(() => {
     if (!document.getElementById("call-modal")?.classList.contains("hidden")) {
       refreshVehicleStatusAndDistance(false);
+      syncCallMiniMap();
     } else {
       clearInterval(vehicleListInterval);
     }
@@ -335,12 +384,11 @@ function buildVehicleListForCall(autoSelect = true) {
     document.getElementById("vehicle-type-select")?.value || "TOUS";
 
   const byBuilding = {};
-
   const allVehicles = [];
 
   buildings.forEach((b) => {
     if (activeFilter !== "ALL" && !typeMap[activeFilter]?.includes(b.type)) {
-      return; // On saute ce bâtiment
+      return;
     }
 
     b.vehicles.forEach((v) => {
@@ -352,11 +400,7 @@ function buildVehicleListForCall(autoSelect = true) {
           v.type.toLowerCase().includes(searchValue);
         const matchesType = typeSelected === "TOUS" || v.type === typeSelected;
         if (matchesSearch && matchesType) {
-          allVehicles.push({
-            vehicle: v,
-            distance: dist,
-            building: b,
-          });
+          allVehicles.push({ vehicle: v, distance: dist, building: b });
         }
       }
     });
@@ -366,10 +410,7 @@ function buildVehicleListForCall(autoSelect = true) {
 
   allVehicles.forEach(({ vehicle, distance, building }) => {
     if (!byBuilding[building.id]) {
-      byBuilding[building.id] = {
-        building,
-        vehicles: [],
-      };
+      byBuilding[building.id] = { building, vehicles: [] };
     }
     byBuilding[building.id].vehicles.push({ vehicle, distance });
   });
@@ -378,9 +419,6 @@ function buildVehicleListForCall(autoSelect = true) {
     const section = document.createElement("div");
     section.className = "building-group";
 
-    const isFireStation = (building.type?.fr || building.type)
-      ?.toLowerCase()
-      .includes("caserne");
     const shortType = ["cpi", "cs", "csp"].includes(building.type)
       ? "CIS"
       : (building.type?.fr || building.type || "").toUpperCase();
@@ -419,25 +457,22 @@ function buildVehicleListForCall(autoSelect = true) {
         ${personnelDispo}
       </span> / ${personnelTotal}
     `;
-    if (personnelDispo === 0) {
-      header.classList.add("no-staff");
-    }
+    if (personnelDispo === 0) header.classList.add("no-staff");
     section.appendChild(header);
 
     vehicles.sort((a, b) => {
       const typeA = a.vehicle.type.toUpperCase();
       const typeB = b.vehicle.type.toUpperCase();
       if (typeA !== typeB) return typeA.localeCompare(typeB);
-
       const labelA = a.vehicle.label.toUpperCase();
       const labelB = b.vehicle.label.toUpperCase();
       return labelA.localeCompare(labelB);
     });
 
     vehicles.forEach(({ vehicle: v, distance }) => {
-      const typeKey = v.type.toUpperCase(); // standardiser
+      const typeKey = v.type.toUpperCase();
       const staffRequired = requiredPersonnel?.[typeKey] || v.personnel || 1;
-      let isChecked = false; // ✅ Déclaré ici
+      let isChecked = false;
 
       if (autoSelect) {
         const available =
@@ -473,20 +508,31 @@ function buildVehicleListForCall(autoSelect = true) {
       row.className = "vehicle-select-row";
       row.dataset.vehicleId = v.id;
       row.dataset.buildingId = building.id;
+
+      // ▼▼▼ MODIF: ajout data-veh-type et data-veh-label pour le récap ▼▼▼
       row.innerHTML = `
-    <input type="checkbox"
-      data-building-id="${building.id}"
-      data-vehicle-id="${v.id}"
-      data-staff="${staffRequired}"
-      ${isChecked ? "checked" : ""}>
-    <span class="vehicle-label">${cleanLabel}</span>
-    <span class="vehicle-distance">${Math.round(distance)} m</span>
-    <span class="status ${v.status}">${v.status.toUpperCase()}</span>
-  `;
+        <input type="checkbox"
+          data-building-id="${building.id}"
+          data-vehicle-id="${v.id}"
+          data-veh-type="${typeKey}"
+          data-veh-label="${cleanLabel}"
+          data-staff="${staffRequired}"
+          ${isChecked ? "checked" : ""}>
+        <span class="vehicle-label">${cleanLabel}</span>
+        <span class="vehicle-distance">${Math.round(distance)} m</span>
+        <span class="status ${v.status}">${v.status.toUpperCase()}</span>
+      `;
+      // ▲▲▲ FIN MODIF ▲▲▲
+
       section.appendChild(row);
 
-      const statusSpan = row.querySelector(".status");
+      const cb = row.querySelector("input[type=checkbox]");
+      cb.addEventListener("change", () => {
+        if (typeof refreshRecap === "function") refreshRecap();
+        if (typeof scheduleAutoSave === "function") scheduleAutoSave();
+      });
 
+      const statusSpan = row.querySelector(".status");
       if (isChecked) {
         statusSpan.classList.add("selected-synced");
       } else {
@@ -495,9 +541,7 @@ function buildVehicleListForCall(autoSelect = true) {
 
       if (isChecked) {
         setTimeout(() => {
-          row
-            .querySelector("input[type=checkbox]")
-            ?.dispatchEvent(new Event("change"));
+          cb?.dispatchEvent(new Event("change"));
         }, 0);
       }
     });
@@ -513,6 +557,7 @@ function buildVehicleListForCall(autoSelect = true) {
   });
 
   setupPersonnelCountListeners();
+
   document
     .querySelectorAll("#call-filter-buttons .filter-btn")
     .forEach((btn) => {
@@ -521,7 +566,7 @@ function buildVehicleListForCall(autoSelect = true) {
           .querySelectorAll("#call-filter-buttons .filter-btn")
           .forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
-        buildVehicleListForCall(false); // Ne pas refaire d'autosélection
+        buildVehicleListForCall(false);
       });
     });
 
@@ -532,6 +577,9 @@ function buildVehicleListForCall(autoSelect = true) {
   document
     .getElementById("vehicle-type-select")
     ?.addEventListener("change", debouncedRebuild);
+
+  // ▼▼▼ MAJ récap après (re)build complet ▼▼▼
+  if (typeof refreshRecap === "function") refreshRecap();
 }
 
 function setupPersonnelCountListeners() {
@@ -674,6 +722,7 @@ function getVehicleLatLng(vehicle, building) {
 function closeCallModal() {
   currentCallMission = null;
   document.getElementById("call-modal").classList.add("hidden");
+  document.body.classList.remove("modal-open");
   clearSelectedSyncedStatus();
 }
 
@@ -2260,118 +2309,148 @@ setInterval(() => {
 }, 1000);
 
 function buildDepartTreeUI() {
-  const step1 = document.getElementById("step-1-services");
-  const step2 = document.getElementById("step-2-categories");
-  const step3 = document.getElementById("step-3-missions");
-  const step4 = document.getElementById("step-4-submissions");
-  const backBtn = document.getElementById("depart-back-button");
+  const section = document.getElementById("depart-type-section");
+  if (!section) return;
 
-  // Réinitialisation UI
-  step1.innerHTML = "";
-  step2.innerHTML = "";
-  step3.innerHTML = "";
-  step4.innerHTML = "";
-  step1.classList.remove("hidden");
-  step2.classList.add("hidden");
-  step3.classList.add("hidden");
-  step4.classList.add("hidden");
-  backBtn.classList.add("hidden");
+  // Éléments (déclarés dans index.html)
+  const btnFire = document.getElementById("btn-service-pompiers");
+  const btnPolice = document.getElementById("btn-service-police");
+  const selCat = document.getElementById("select-category");
+  const selMission = document.getElementById("select-mission");
+  const rowSub = document.getElementById("row-submission");
+  const selSub = document.getElementById("select-submission");
+  const launchBtn = document.getElementById("launch-mission-btn");
 
-  // Étape 1 : services (Pompiers, Police...)
-  for (const serviceKey in DEPART_TREE) {
-    const service = DEPART_TREE[serviceKey];
-    const btn = document.createElement("button");
-    btn.textContent = service.label;
-    btn.onclick = () => {
-      currentCallMission._currentService = serviceKey;
-      step1.classList.add("hidden");
-      step2.innerHTML = "";
-      step2.classList.remove("hidden");
-      backBtn.classList.remove("hidden");
-
-      // Étape 2 : catégories (SAP, INC, AVP...)
-      for (const catKey in service.categories) {
-        const category = service.categories[catKey];
-        const catBtn = document.createElement("button");
-        catBtn.textContent = category.label;
-        catBtn.onclick = () => {
-          currentCallMission._currentCategory = catKey;
-          step2.classList.add("hidden");
-          step3.innerHTML = "";
-          step3.classList.remove("hidden");
-          step4.classList.add("hidden");
-
-          // Étape 3 : missions ou groupes
-          for (const missionLabel in category.missions) {
-            const missionGroup = category.missions[missionLabel];
-
-            // Cas SAP / INC → niveau intermédiaire
-            if (
-              (catKey === "SAP" || catKey === "INC") &&
-              typeof missionGroup === "object" &&
-              !Array.isArray(missionGroup)
-            ) {
-              const mBtn = document.createElement("button");
-              mBtn.textContent = missionLabel;
-              mBtn.onclick = () => {
-                step3.classList.add("hidden");
-                step4.innerHTML = "";
-                step4.classList.remove("hidden");
-
-                currentCallMission._sapMissionGroup = category.missions;
-                currentCallMission._sapCategory = missionLabel;
-
-                const subMissions = missionGroup;
-                for (const subLabel in subMissions) {
-                  const item = subMissions[subLabel];
-
-                  // ✅ Si c’est déjà une mission finale (pas un sous-groupe), affiche directement les véhicules
-                  if (Array.isArray(item)) {
-                    const subBtn = document.createElement("button");
-                    subBtn.textContent = subLabel;
-                    subBtn.onclick = () => {
-                      // Ne masque plus le menu
-                      currentCallMission.departSelected = item;
-                      currentCallMission.departLabel = `${missionLabel} - ${subLabel}`;
-                      document
-                        .getElementById("vehicle-selection-section")
-                        .classList.remove("hidden");
-                      document
-                        .getElementById("launch-mission-btn")
-                        .classList.remove("hidden");
-                      buildVehicleListForCall(true);
-                    };
-                    step4.appendChild(subBtn);
-                  }
-
-                  // 🔒 (Optionnel) si tu ajoutes un jour encore un niveau (rare), tu peux le détecter ici
-                }
-              };
-              step3.appendChild(mBtn);
-            } else {
-              // Cas normal
-              const mBtn = document.createElement("button");
-              mBtn.textContent = missionLabel;
-              mBtn.onclick = () => {
-                currentCallMission.departSelected = missionGroup;
-                currentCallMission.departLabel = missionLabel;
-                document
-                  .getElementById("vehicle-selection-section")
-                  .classList.remove("hidden");
-                document
-                  .getElementById("launch-mission-btn")
-                  .classList.remove("hidden");
-                buildVehicleListForCall(true);
-              };
-              step3.appendChild(mBtn);
-            }
-          }
-        };
-        step2.appendChild(catBtn);
-      }
-    };
-    step1.appendChild(btn);
+  // Service courant par défaut
+  if (!currentCallMission._serviceKey) {
+    currentCallMission._serviceKey = "pompiers";
   }
+
+  const setServiceActive = (key) => {
+    currentCallMission._serviceKey = key;
+    btnFire.classList.toggle("active", key === "pompiers");
+    btnPolice.classList.toggle("active", key === "police");
+    populateCategories();
+    selMission.innerHTML = "";
+    selSub.innerHTML = "";
+    rowSub.classList.add("hidden");
+    currentCallMission.departSelected = null;
+    currentCallMission.departLabel = null;
+    document
+      .getElementById("vehicle-selection-section")
+      .classList.add("hidden");
+    launchBtn.classList.add("hidden");
+  };
+
+  const populateCategories = () => {
+    const service = DEPART_TREE[currentCallMission._serviceKey];
+    selCat.innerHTML =
+      '<option value="" disabled selected>Choisir une catégorie…</option>';
+    Object.keys(service.categories).forEach((k) => {
+      const opt = document.createElement("option");
+      opt.value = k;
+      opt.textContent = service.categories[k].label;
+      selCat.appendChild(opt);
+    });
+  };
+
+  const populateMissions = () => {
+    selMission.innerHTML =
+      '<option value="" disabled selected>Choisir…</option>';
+    selSub.innerHTML = "";
+    rowSub.classList.add("hidden");
+    const service = DEPART_TREE[currentCallMission._serviceKey];
+    const catKey = selCat.value;
+    const category = service.categories[catKey];
+    if (!category) return;
+
+    for (const mLabel in category.missions) {
+      const opt = document.createElement("option");
+      opt.value = mLabel;
+      opt.textContent = mLabel;
+      opt.dataset.hasSub =
+        typeof category.missions[mLabel] === "object" &&
+        !Array.isArray(category.missions[mLabel])
+          ? "1"
+          : "0";
+      selMission.appendChild(opt);
+    }
+  };
+
+  const populateSubmissionsIfAny = () => {
+    const service = DEPART_TREE[currentCallMission._serviceKey];
+    const catKey = selCat.value;
+    const category = service.categories[catKey];
+    const missionLabel = selMission.value;
+    const missionGroup = category?.missions?.[missionLabel];
+    if (!missionGroup) return;
+
+    if (typeof missionGroup === "object" && !Array.isArray(missionGroup)) {
+      // Un niveau supplémentaire → afficher la liste des précisions
+      rowSub.classList.remove("hidden");
+      selSub.innerHTML =
+        '<option value="" disabled selected>Préciser…</option>';
+      for (const subLabel in missionGroup) {
+        const opt = document.createElement("option");
+        opt.value = subLabel;
+        opt.textContent = subLabel;
+        selSub.appendChild(opt);
+      }
+      currentCallMission.departSelected = null;
+      currentCallMission.departLabel = null;
+      document
+        .getElementById("vehicle-selection-section")
+        .classList.add("hidden");
+      launchBtn.classList.add("hidden");
+    } else {
+      // Directement une liste d’engins requise
+      currentCallMission.departSelected = missionGroup;
+      currentCallMission.departLabel = missionLabel;
+      document
+        .getElementById("vehicle-selection-section")
+        .classList.remove("hidden");
+      launchBtn.classList.remove("hidden");
+      buildVehicleListForCall(true);
+      if (typeof refreshRecap === "function") refreshRecap();
+      if (typeof scheduleAutoSave === "function") scheduleAutoSave();
+    }
+  };
+
+  const finalizeWithSub = () => {
+    const service = DEPART_TREE[currentCallMission._serviceKey];
+    const catKey = selCat.value;
+    const category = service.categories[catKey];
+    const missionLabel = selMission.value;
+    const subLabel = selSub.value;
+    if (!category || !missionLabel || !subLabel) return;
+    const req = category.missions[missionLabel][subLabel];
+    currentCallMission.departSelected = req;
+    currentCallMission.departLabel = missionLabel + " - " + subLabel;
+    document
+      .getElementById("vehicle-selection-section")
+      .classList.remove("hidden");
+    launchBtn.classList.remove("hidden");
+    buildVehicleListForCall(true);
+
+    if (typeof refreshRecap === "function") refreshRecap();
+    if (typeof scheduleAutoSave === "function") scheduleAutoSave();
+  };
+
+  // Binder une seule fois
+  if (!section.dataset.dropdownInit) {
+    btnFire.addEventListener("click", () => setServiceActive("pompiers"));
+    btnPolice.addEventListener("click", () => setServiceActive("police"));
+    selCat.addEventListener("change", () => {
+      populateMissions();
+      populateSubmissionsIfAny();
+    });
+    selMission.addEventListener("change", () => populateSubmissionsIfAny());
+    selSub.addEventListener("change", finalizeWithSub);
+    section.dataset.dropdownInit = "1";
+  }
+
+  // Initial
+  setServiceActive(currentCallMission._serviceKey);
 }
 
 function handleDepartBack() {
@@ -3510,3 +3589,291 @@ function clearPulseCallsButton() {
 document
   .getElementById("open-calls-panel")
   ?.addEventListener("click", clearPulseCallsButton);
+
+let _callMiniMap, _callMiniMarker;
+let _miniVehMarkers = new Map(); // idVeh -> L.marker
+let _miniBldMarkers = new Map(); // idBuilding -> L.marker
+let _miniMissionMarkers = new Map(); // idMission -> L.marker
+
+function createCallMiniMap() {
+  const node = document.getElementById("call-mini-map");
+  if (!node) return;
+  if (_callMiniMap) return;
+
+  // 1) Crée la carte
+  _callMiniMap = L.map(node, { zoomControl: true, attributionControl: false });
+
+  // 2) Tuile identique si possible (si tu as gardé une référence à la couche)
+  // Essaie de cloner la première couche "tileLayer" de la map principale :
+  let baseLayer;
+  try {
+    // Cherche une layer type TileLayer sur la carte principale
+    map.eachLayer((l) => {
+      if (!baseLayer && l instanceof L.TileLayer) baseLayer = l;
+    });
+  } catch (e) {}
+  if (baseLayer) {
+    L.tileLayer(baseLayer._url, baseLayer.options).addTo(_callMiniMap);
+  } else {
+    // fallback OSM
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(
+      _callMiniMap
+    );
+  }
+
+  // 3) Vue identique à la principale
+  try {
+    const c = map.getCenter();
+    _callMiniMap.setView([c.lat, c.lng], map.getZoom());
+  } catch (e) {
+    _callMiniMap.setView([48.85837, 2.29448], 13);
+  }
+
+  // 4) Ajuste après affichage
+  setTimeout(() => _callMiniMap.invalidateSize(), 60);
+
+  // 5) Premier build des overlays
+  refreshMiniMapOverlays(true);
+}
+
+function syncCallMiniMap(lat, lng, zoom) {
+  if (!_callMiniMap) return;
+
+  // Vue
+  if (typeof lat === "number" && typeof lng === "number") {
+    _callMiniMap.setView(
+      [lat, lng],
+      zoom || Math.max(14, map?.getZoom?.() || 14)
+    );
+  } else if (window.map) {
+    const c = map.getCenter();
+    _callMiniMap.setView([c.lat, c.lng], map.getZoom());
+  }
+
+  // MAJ overlays à chaque sync
+  refreshMiniMapOverlays(false);
+}
+
+// Ajoute / met à jour les marqueurs véhicules & bâtiments
+function refreshMiniMapOverlays(initial = false) {
+  if (!_callMiniMap) return;
+
+  // --- BÂTIMENTS ---
+  const seenBld = new Set();
+  if (Array.isArray(buildings)) {
+    for (const b of buildings) {
+      const id = b.id;
+      const latlng = b.marker?.getLatLng?.() || b.latlng;
+      if (!latlng) continue;
+      seenBld.add(id);
+
+      let mk = _miniBldMarkers.get(id);
+      if (!mk) {
+        const icon = b.marker?.options?.icon;
+        mk = L.marker(latlng, icon ? { icon } : undefined).addTo(_callMiniMap);
+        _miniBldMarkers.set(id, mk);
+      } else {
+        mk.setLatLng(latlng);
+      }
+    }
+  }
+  // purge bâtiments disparus
+  for (const [id, mk] of _miniBldMarkers) {
+    if (!seenBld.has(id)) {
+      _callMiniMap.removeLayer(mk);
+      _miniBldMarkers.delete(id);
+    }
+  }
+
+  // --- VÉHICULES ---
+  const seenVeh = new Set();
+  if (Array.isArray(buildings)) {
+    for (const b of buildings) {
+      for (const v of b.vehicles || []) {
+        if (!v.marker || !v.marker.getLatLng) continue;
+        const id = v.id;
+        const latlng = v.marker.getLatLng();
+        seenVeh.add(id);
+
+        let mk = _miniVehMarkers.get(id);
+        if (!mk) {
+          const icon = v.marker?.options?.icon;
+          mk = L.marker(latlng, icon ? { icon } : undefined).addTo(
+            _callMiniMap
+          );
+          _miniVehMarkers.set(id, mk);
+        } else {
+          mk.setLatLng(latlng);
+        }
+      }
+    }
+  }
+  // purge véhicules disparus
+  for (const [id, mk] of _miniVehMarkers) {
+    if (!seenVeh.has(id)) {
+      _callMiniMap.removeLayer(mk);
+      _miniVehMarkers.delete(id);
+    }
+  }
+
+  // --- MISSIONS (NOUVEAU) ---
+  const seenMis = new Set();
+  if (Array.isArray(missions)) {
+    for (const m of missions) {
+      const id = m.id ?? m.identifier ?? m.uid;
+      if (id == null) continue;
+
+      // récupère la position (marker de la carte principale prioritaire)
+      let latlng = m.marker?.getLatLng?.();
+      if (!latlng && m.position) {
+        const { lat, lng } = m.position;
+        if (typeof lat === "number" && typeof lng === "number") {
+          latlng = L.latLng(lat, lng);
+        }
+      }
+      if (!latlng) continue;
+
+      seenMis.add(id);
+
+      let mk = _miniMissionMarkers.get(id);
+      if (!mk) {
+        // réutilise l'icône du marker principal si dispo (feu, SAP, etc.)
+        const icon = m.marker?.options?.icon;
+        mk = L.marker(
+          latlng,
+          icon ? { icon, zIndexOffset: 500 } : { zIndexOffset: 500 }
+        ).addTo(_callMiniMap);
+        _miniMissionMarkers.set(id, mk);
+      } else {
+        mk.setLatLng(latlng);
+      }
+    }
+  }
+  // purge missions disparues
+  for (const [id, mk] of _miniMissionMarkers) {
+    if (!seenMis.has(id)) {
+      _callMiniMap.removeLayer(mk);
+      _miniMissionMarkers.delete(id);
+    }
+  }
+}
+
+function centerMainMapTo(lat, lng) {
+  if (window.map && typeof map.setView === "function") {
+    map.setView([lat, lng], Math.max(15, map.getZoom() || 15));
+  }
+}
+
+function refreshRecap() {
+  // Identifiant
+  const rId = document.getElementById("recap-id");
+  if (rId) rId.textContent = currentCallMission?.id ?? "—";
+
+  // Date/heure de génération
+  const rTs = document.getElementById("recap-ts");
+  if (rTs) {
+    const ts = currentCallMission?.createdAt;
+    rTs.textContent = ts
+      ? new Date(ts).toLocaleString("fr-FR", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        })
+      : "—";
+  }
+
+  // Adresse : mission → location → texte UI → —
+  const addr =
+    currentCallMission?.address ||
+    currentCallMission?.location?.address ||
+    document.getElementById("call-address")?.textContent?.trim() ||
+    "—";
+  const rAddr = document.getElementById("recap-address");
+  if (rAddr) rAddr.textContent = addr || "—";
+
+  // Typologie
+  const rType = document.getElementById("recap-type");
+  if (rType) rType.textContent = currentCallMission?.departLabel || "—";
+
+  // Véhicules (2 × FPT, 1 × VSAV, …)
+  const rVeh = document.getElementById("recap-vehicles");
+  if (rVeh) {
+    const counts = countSelectedByType();
+    const keys = Object.keys(counts);
+    rVeh.textContent = keys.length
+      ? keys.map((k) => `${counts[k]} × ${k}`).join(", ")
+      : "—";
+  }
+
+  // Observations
+  const rObs = document.getElementById("recap-observations");
+  if (rObs) {
+    const t = (currentCallMission?.observations || "").trim();
+    rObs.textContent = t || "—";
+  }
+}
+
+function countSelectedByType() {
+  const boxes = Array.from(
+    document.querySelectorAll(
+      '#vehicle-selection-section input[type="checkbox"][data-vehicle-id]'
+    )
+  );
+  const counts = {};
+  for (const b of boxes) {
+    if (b.checked) {
+      const t = (b.dataset.vehType || b.dataset.vehLabel || "").toUpperCase();
+      if (!t) continue;
+      counts[t] = (counts[t] || 0) + 1;
+    }
+  }
+  return counts;
+}
+
+function getSelectedVehiclesForCurrentCall() {
+  // lit les checkboxes construites par buildVehicleListForCall()
+  const boxes = Array.from(
+    document.querySelectorAll(
+      '#vehicle-selection-section input[type="checkbox"][data-veh-id]'
+    )
+  );
+  const res = [];
+  for (const b of boxes) {
+    if (b.checked) {
+      res.push({
+        id: b.dataset.vehId,
+        label:
+          b.dataset.vehLabel ||
+          b.closest("label")?.innerText?.trim() ||
+          b.value,
+      });
+    }
+  }
+  return res;
+}
+
+// Récupère l'adresse affichée dans #call-address, la nettoie et la stocke sur la mission,
+// puis rafraîchit le récap.
+function updateAddressFromUI() {
+  const p = document.getElementById("call-address");
+  if (!p) return;
+  let txt = (p.textContent || "").trim();
+
+  // Nettoyage des formules "Il me semble que c’est ici :", "Je vous donne l’adresse :", etc.
+  // → on prend ce qu'il y a après le premier ':' s'il existe.
+  const i = txt.indexOf(":");
+  if (i !== -1 && i < txt.length - 1) txt = txt.slice(i + 1).trim();
+
+  if (txt) {
+    currentCallMission.address = txt;
+    currentCallMission.location = {
+      ...(currentCallMission.location || {}),
+      address: txt,
+    };
+  }
+  if (typeof refreshRecap === "function") refreshRecap();
+  if (typeof scheduleAutoSave === "function") scheduleAutoSave();
+}

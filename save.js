@@ -482,6 +482,9 @@ async function saveState() {
       durationMs: m.durationMs || null,
       labelUpdated: m.labelUpdated || false,
       dialogue: m.dialogue,
+      observations: m.observations || "",
+      createdAt: m.createdAt || Date.now(),
+
       solutionType: m.solutionType,
       sourceType: m.sourceType,
       vehicles: m.vehicles.map((v) => ({
@@ -776,6 +779,9 @@ async function loadState() {
       reward: ms.reward,
       position: ms.position,
       marker,
+      observations: ms.observations || "",
+      createdAt: ms.createdAt || Date.now(),
+
       domElement: li,
       dialogue: ms.dialogue,
       hasAskedAddress: !!ms.hasAskedAddress,

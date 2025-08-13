@@ -352,55 +352,172 @@
       </div>
 
       <div id="call-modal" class="hidden modal-overlay">
-        <div class="modal-content large-modal">
-          <h2>📞 Prise d'appel</h2>
-          <div id="call-dialogue" class="call-dialogue"></div>
-          <button id="reveal-address-btn" onclick="handleRevealAddress()">
-            📍 Demander l’adresse
-          </button>
-          <p id="call-address" class="hidden"></p>
-
-          <div id="depart-type-section" class="hidden">
-            <label><strong>Choisissez un départ type :</strong></label>
-            <div id="step-1-services" class="depart-buttons"></div>
-            <div id="step-2-categories" class="depart-buttons hidden"></div>
-            <div id="step-3-missions" class="depart-buttons hidden"></div>
-            <div id="step-4-submissions" class="depart-buttons hidden"></div>
-            <div id="depart-back-button" class="depart-back hidden">
-              <button onclick="handleDepartBack()">⬅ Retour</button>
+        <div class="modal-content extra-large">
+          <!-- Encadré de prise d'appel (dialogue) -->
+          <section class="call-card span-all">
+            <header class="call-card-h">Prise d'appel</header>
+            <div class="call-row">
+              <div id="call-dialogue" class="call-dialogue"></div>
             </div>
+          </section>
+
+          <!-- ====== LAYOUT ====== -->
+          <div class="call-grid">
+            <!-- Col. 1 — Carte (plus large) -->
+            <section class="call-card" id="call-card-map">
+              <header class="call-card-h">Carte</header>
+              <div id="call-mini-map"></div>
+            </section>
+
+            <!-- Col. 2 — Localisation + Départ & Observations -->
+            <section class="call-card" id="call-card-location">
+              <header class="call-card-h">Localisation</header>
+
+              <div class="call-row">
+                <button
+                  id="reveal-address-btn"
+                  onclick="handleRevealAddress()"
+                  class="btn primary full"
+                >
+                  📍 Demander l’adresse
+                </button>
+              </div>
+
+              <div class="call-row">
+                <!-- Texte d'adresse (utilisé par handleRevealAddress / openCallModal) -->
+                <p id="call-address" class=""></p>
+              </div>
+
+              <!-- Départ & Observations (déplacé ici) -->
+              <header class="call-card-h" style="margin-top: 6px">
+                Départ & Observations
+              </header>
+              <div id="depart-type-section" class="">
+                <div
+                  class="form-row"
+                  style="
+                    display: flex;
+                    gap: 8px;
+                    align-items: center;
+                    margin: 8px 12px;
+                  "
+                >
+                  <button id="btn-service-pompiers" class="active">
+                    🚒 Pompiers
+                  </button>
+                  <button id="btn-service-police">👮 Police</button>
+                </div>
+
+                <div class="form-row">
+                  <label for="select-category"
+                    ><strong>Catégorie</strong></label
+                  >
+                  <select id="select-category">
+                    <option value="" selected disabled>
+                      Choisir une catégorie…
+                    </option>
+                  </select>
+                </div>
+
+                <div class="form-row">
+                  <label for="select-mission"><strong>Mission</strong></label>
+                  <select id="select-mission">
+                    <option value="" selected disabled>Choisir…</option>
+                  </select>
+                </div>
+
+                <div class="form-row hidden" id="row-submission">
+                  <label for="select-submission"
+                    ><strong>Précision</strong></label
+                  >
+                  <select id="select-submission">
+                    <option value="" selected disabled>Préciser…</option>
+                  </select>
+                </div>
+
+                <div class="form-row">
+                  <label for="call-observations"
+                    ><strong>Observations</strong></label
+                  >
+                  <textarea
+                    id="call-observations"
+                    rows="5"
+                    placeholder="Notes opérateur (optionnel)"
+                  ></textarea>
+                </div>
+              </div>
+            </section>
+
+            <!-- Col. 3 — Véhicules -->
+            <section class="call-card" id="call-card-vehicles">
+              <header class="call-card-h">Véhicules disponibles</header>
+
+              <div
+                id="vehicle-selection-section"
+                class="vehicle-selection-context"
+              >
+                <div id="call-filter-buttons" style="margin: 8px 12px">
+                  <button class="filter-btn active" data-filter="ALL">
+                    Tous
+                  </button>
+                  <button class="filter-btn" data-filter="FIRE">Caserne</button>
+                  <button class="filter-btn" data-filter="HOSPITAL">
+                    Hôpital
+                  </button>
+                  <button class="filter-btn" data-filter="POLICE">
+                    Commissariat
+                  </button>
+                </div>
+
+                <div id="vehicle-list"></div>
+              </div>
+            </section>
+
+            <!-- Col. 4 — Récapitulatif -->
+            <section class="call-card" id="call-card-recap">
+              <header class="call-card-h">Récapitulatif</header>
+              <div class="recap">
+                <div class="recap-row">
+                  <span class="recap-k">Identifiant</span>
+                  <span class="recap-v" id="recap-id">—</span>
+                </div>
+                <div class="recap-row">
+                  <span class="recap-k">Créée</span>
+                  <span class="recap-v" id="recap-ts">—</span>
+                </div>
+                <div class="recap-row">
+                  <span class="recap-k">Adresse</span>
+                  <span class="recap-v" id="recap-address">—</span>
+                </div>
+                <!-- Service retiré comme demandé -->
+
+                <div class="recap-row">
+                  <span class="recap-k">Typologie</span>
+                  <span class="recap-v" id="recap-type">—</span>
+                </div>
+                <div class="recap-row">
+                  <span class="recap-k">Véhicules</span>
+                  <div class="recap-v" id="recap-vehicles">—</div>
+                </div>
+                <div class="recap-row">
+                  <span class="recap-k">Obs.</span>
+                  <div class="recap-v" id="recap-observations">—</div>
+                </div>
+              </div>
+
+              <div class="call-row">
+                <button id="launch-mission-btn" class="btn success full">
+                  🚨 Déclencher l'intervention
+                </button>
+              </div>
+              <div class="call-row">
+                <button onclick="closeCallModal()" class="btn secondary full">
+                  Annuler
+                </button>
+              </div>
+            </section>
           </div>
-
-          <div
-            id="vehicle-selection-section"
-            class="hidden vehicle-selection-context"
-          >
-            <h4>Véhicules disponibles</h4>
-            <div id="call-filter-buttons" style="margin-bottom: 8px">
-              <button class="filter-btn active" data-filter="ALL">Tous</button>
-              <button class="filter-btn" data-filter="FIRE">Caserne</button>
-              <button class="filter-btn" data-filter="HOSPITAL">Hôpital</button>
-              <button class="filter-btn" data-filter="POLICE">
-                Commissariat
-              </button>
-            </div>
-
-            <div id="vehicle-list"></div>
-          </div>
-
-          <button id="launch-mission-btn" class="hidden">
-            🚨 Déclencher l'intervention
-          </button>
-          <button onclick="closeCallModal()">Annuler</button>
-        </div>
-      </div>
-
-      <!-- Modale Mission en cours -->
-      <div id="manage-modal" class="hidden modal-overlay">
-        <div class="modal-content large-modal">
-          <h2>🚨 Mission en cours</h2>
-          <div id="manage-content"></div>
-          <button onclick="closeManageModal()">Fermer</button>
+          <!-- ====== /LAYOUT ====== -->
         </div>
       </div>
 

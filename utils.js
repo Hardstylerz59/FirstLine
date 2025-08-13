@@ -1058,8 +1058,26 @@ function revealFullTypewriterText() {
 }
 
 function handleRevealAddress() {
-  revealFullTypewriterText(); // 🔥 force l'affichage du texte complet
-  document.getElementById("call-address").classList.remove("hidden");
+  revealFullTypewriterText();
+  const addrP = document.getElementById("call-address");
+  if (addrP) addrP.classList.remove("hidden");
+
+  // Met à jour mission.address à partir du texte UI tout de suite
+  updateAddressFromUI();
+
+  // Centre cartes si coords
+  const lat = currentCallMission?.position?.lat;
+  const lng = currentCallMission?.position?.lng;
+  if (typeof lat === "number" && typeof lng === "number") {
+    centerMainMapTo(lat, lng);
+    syncCallMiniMap(lat, lng);
+  }
+
+  // Afficher menus
+  document.getElementById("depart-type-section")?.classList.remove("hidden");
+  buildDepartTreeUI();
+
+  document.getElementById("reveal-address-btn")?.classList.add("hidden");
 }
 
 function normalizeId(name) {

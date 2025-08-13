@@ -406,6 +406,7 @@ async function createMission() {
     realType: enriched.type,
     label: "📞 Appel en cours...",
     xp: enriched.xp,
+    observations: "",
     reward: enriched.reward,
     minLevel: enriched.minLevel,
     duration: enriched.duration,
