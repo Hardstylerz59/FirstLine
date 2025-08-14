@@ -214,6 +214,14 @@
                 />
               </div>
             </div>
+            <label class="toggle small" id="manual-order-toggle">
+              <input
+                id="toggle-manual-order"
+                type="checkbox"
+                onchange="toggleManualBuildingOrder(this.checked)"
+              />
+              Ordonner manuellement
+            </label>
             <ul id="building-list"></ul>
           </div>
         </div>
@@ -356,6 +364,26 @@
 
           <div class="right actions">
             <button id="close-calls-panel">Fermer</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modale Gestion d’intervention -->
+      <div id="manage-modal" class="hidden modal-overlay">
+        <div class="modal-content extra-large">
+          <button
+            class="modal-close close-red"
+            aria-label="Fermer"
+            title="Fermer"
+            onclick="closeManageModal()"
+          >
+            ✖
+          </button>
+
+          <div id="manage-content"></div>
+
+          <div class="right actions">
+            <button onclick="closeManageModal()">Fermer</button>
           </div>
         </div>
       </div>
@@ -560,12 +588,15 @@
 
       <!-- Modale gestion bâtiment -->
       <div id="building-modal" class="modal hidden modal-overlay">
-        <div class="modal-content scrollable" id="building-modal-content"></div>
+        <div
+          class="modal-content extra-large"
+          id="building-modal-content"
+        ></div>
       </div>
 
       <!-- Modale gestion hôpital -->
       <div id="hospital-modal" class="hidden modal-overlay">
-        <div class="modal-content large-modal">
+        <div class="modal-content extra-large">
           <h2>🏥 Gestion de l'hôpital</h2>
           <div id="hospital-name"></div>
           <ul id="hospital-patient-list" class="patient-list"></ul>

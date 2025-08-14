@@ -465,6 +465,12 @@ async function saveState() {
         capacityEau: v.capacityEau ?? null,
       })),
     })),
+    buildingOrder: Array.from(
+      document.getElementById("building-list")?.children || []
+    )
+      .map((el) => (el.id || "").replace("building-block-", ""))
+      .filter(Boolean),
+
     missions: missions.map((m) => ({
       hasAskedAddress: !!m.hasAskedAddress,
       id: m.id,
@@ -602,6 +608,18 @@ async function loadState() {
   (state.history || []).forEach((entryHtml) => {
     historyEl.insertAdjacentHTML("beforeend", entryHtml);
   });
+
+  if (state.buildingOrder && Array.isArray(state.buildingOrder)) {
+    const indexOf = Object.fromEntries(
+      state.buildingOrder.map((bid, i) => [bid, i])
+    );
+    state.buildings.sort((a, b) => {
+      const sa = `${a.type}-${a.name}`.toLowerCase().replace(/\s+/g, "-");
+      const sb = `${b.type}-${b.name}`.toLowerCase().replace(/\s+/g, "-");
+      return (indexOf[sa] ?? 1e9) - (indexOf[sb] ?? 1e9);
+    });
+    window.BUILDING_ORDER = state.buildingOrder.slice();
+  }
 
   const vehicleById = {};
   const buildingById = {};
@@ -817,6 +835,11 @@ async function loadState() {
     }
 
     missions.push(mission);
+    if (mission.marker && mission.marker.getPopup()) {
+      mission.marker.setPopupContent(() =>
+        generateMissionPopupContent(mission)
+      );
+    }
     verifyMissionVehicles(mission);
     if (mission.progressStarted && mission.startTime && mission.durationMs) {
       resumeMissionProgress(mission);
@@ -895,5 +918,12 @@ async function loadState() {
   }
 
   window.RESTORE_MODE = false;
+  // 🔁 Re-synchronise la sidebar véhicules après chargement
+  buildings.forEach((b) => updateSidebarVehicleList(getSafeId(b)));
+
+  if (window.MANUAL_BUILDING_ORDER) {
+    bindBuildingDnd?.(document.getElementById("building-list"), true);
+  }
+
   console.log("[☁️ Supabase] Chargement terminé.");
 }

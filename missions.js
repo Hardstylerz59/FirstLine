@@ -456,11 +456,11 @@ async function createMission() {
     iconSize: [28, 28],
     iconAnchor: [14, 28],
   });
-  const marker = L.marker(latlng, { icon })
-    .addTo(map)
-    .bindPopup(
-      () => mission.domElement?.cloneNode(true) || "<em>Pas d’info mission</em>"
-    );
+  const marker = L.marker(latlng, { icon }).addTo(map);
+
+  // Popup dynamique qui génère un bouton cliquable ("Traiter" / "Gérer")
+  marker.bindPopup(() => generateMissionPopupContent(mission));
+
   mission.marker = marker;
 
   if (soundEnabled) {

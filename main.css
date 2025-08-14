@@ -1422,7 +1422,7 @@ body.modal-open {
 
 #radio-log-panel {
   flex-shrink: 0;
-  height: 210px; /* hauteur fixe claire */
+  height: 300px; /* hauteur fixe claire */
   background: #181a23;
   color: #ffe37b;
   padding: 8px 0 0 0;
@@ -1430,6 +1430,8 @@ body.modal-open {
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
+  margin-top: 8px;
+  margin-bottom: 8px;
 }
 
 #radio-log-list {
@@ -2085,4 +2087,42 @@ th.sorted {
 .modal-content .modal-close.close-red:hover {
   filter: brightness(0.9);
   transform: scale(1.05);
+}
+
+/* Place le log radio au bas de la sidebar gauche */
+#missions-main > #radio-log-panel {
+  margin-top: auto; /* pousse "Log Radio" tout en bas */
+}
+
+/* Interrupteur "Ordonner manuellement" */
+#manual-order-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+/* État draggable des items bâtiment */
+#buildings-list .building-item[draggable="true"] {
+  cursor: grab;
+}
+#buildings-list .building-item.dragging {
+  opacity: 0.6;
+  cursor: grabbing;
+  outline: 2px dashed rgba(0, 0, 0, 0.2);
+  outline-offset: 4px;
+}
+
+/* Petit handle (≡) à droite du header de l’item quand l’ordre manuel est actif */
+#buildings-list.manual .drag-handle {
+  display: inline-block;
+}
+.drag-handle {
+  display: none;
+  user-select: none;
+  margin-left: 8px;
+  font-weight: 700;
+  opacity: 0.55;
 }

@@ -1,5 +1,6 @@
 // === buildings.js (corrigé pour gestion des noms identiques par type + modal prêat) ===
 let currentManagedBuilding = null;
+window.MANUAL_BUILDING_ORDER = false;
 
 function getSafeId(building) {
   return `${building.type}-${building.name}`.toLowerCase().replace(/\s+/g, "-");
@@ -69,6 +70,9 @@ map.on("click", (e) => {
     type === "hopital" ? "CH" : type === "police" ? "Commissariat" : "CIS";
 
   const li = document.createElement("li");
+  li.dataset.bid = safeId;
+  li.setAttribute("draggable", window.MANUAL_BUILDING_ORDER ? "true" : "false");
+
   li.classList.add("building-block", type);
   li.id = `building-block-${safeId}`;
   li.innerHTML = `
@@ -92,6 +96,8 @@ map.on("click", (e) => {
       }
       <p class="building-type-label hidden" id="type-${safeId}">Type : ${type.toUpperCase()}</p>
     </div>
+    <span class="drag-handle">≡</span>
+
     <button onclick="openBuildingModal('${safeId}')">Gérer</button>
     <button class="toggle-veh-btn" onclick="toggleVehicleList('${safeId}', this)">▼</button>
   </div>
@@ -99,6 +105,9 @@ map.on("click", (e) => {
 `;
 
   buildingList.appendChild(li);
+  if (window.MANUAL_BUILDING_ORDER)
+    bindBuildingDnd(document.getElementById("building-list"), true);
+
   const marker = L.marker(latlng, { icon })
     .addTo(map)
     .bindPopup(
@@ -466,12 +475,15 @@ function updateVehicleListDisplay(safeId) {
 function updateSidebarVehicleList(safeId) {
   const building = buildings.find((b) => getSafeId(b) === safeId);
   if (!building) return;
+  if (window.RESTORE_MODE) return; // ⛔ ne pas toucher pendant le chargement
 
   const list = document.getElementById(`veh-${safeId}`);
   if (!list) {
     console.warn(`🚫 Impossible de trouver #veh-${safeId} dans la sidebar`);
     return;
   }
+
+  if (!Array.isArray(building.vehicles)) return; // encore en restauration → ne pas vider
 
   list.innerHTML = "";
 
@@ -558,4 +570,120 @@ function toggleVehicleList(safeId, btn) {
   if (!list) return;
   list.classList.toggle("hidden");
   btn.textContent = list.classList.contains("hidden") ? "▲" : "▼";
+}
+
+function toggleManualBuildingOrder(enabled) {
+  window.MANUAL_BUILDING_ORDER = !!enabled;
+  const list = document.getElementById("building-list");
+  if (!list) return;
+
+  list.classList.toggle("manual", enabled);
+
+  // Rendre chaque carte draggable + handle
+  list.querySelectorAll(".building-block").forEach((el) => {
+    const bid = el.id?.replace("building-block-", "") || el.dataset.bid;
+    el.dataset.bid = bid;
+    el.setAttribute("draggable", enabled ? "true" : "false");
+    let handle = el.querySelector(".drag-handle");
+    if (!handle) {
+      handle = document.createElement("span");
+      handle.className = "drag-handle";
+      handle.textContent = "≡";
+      const header =
+        el.querySelector(".building-header") || el.firstElementChild;
+      header && header.insertBefore(handle, header.querySelector("button"));
+    }
+    if (!enabled && handle) handle.style.display = "none";
+    if (enabled && handle) handle.style.display = "";
+  });
+
+  bindBuildingDnd(list, enabled);
+}
+
+function bindBuildingDnd(list, enabled) {
+  if (!list) return;
+
+  // Nettoyage
+  list.onpointerover = null;
+  list.ondrop = null;
+  list.removeEventListener("dragover", list._onDragOver || (() => {}));
+  list.removeEventListener("drop", list._onDrop || (() => {}));
+  list.querySelectorAll(".building-block").forEach((el) => {
+    el.removeEventListener("dragstart", el._onDragStart || (() => {}));
+    el.removeEventListener("dragend", el._onDragEnd || (() => {}));
+  });
+
+  if (!enabled) return;
+
+  let currentDragging = null;
+
+  const onDragOver = (e) => {
+    e.preventDefault();
+    const afterEl = getAfterElement(list, e.clientY);
+    if (!currentDragging) return;
+    if (afterEl == null) list.appendChild(currentDragging);
+    else list.insertBefore(currentDragging, afterEl);
+  };
+  list._onDragOver = onDragOver;
+  list.addEventListener("dragover", onDragOver);
+
+  const onDrop = (e) => {
+    e.preventDefault();
+    persistBuildingOrder(list);
+  };
+  list._onDrop = onDrop;
+  list.addEventListener("drop", onDrop);
+
+  list.querySelectorAll(".building-block").forEach((el) => {
+    const onDragStart = (e) => {
+      currentDragging = el;
+      el.classList.add("dragging");
+      try {
+        e.dataTransfer.setData("text/plain", el.dataset.bid || "");
+      } catch {}
+      e.dataTransfer.effectAllowed = "move";
+    };
+    const onDragEnd = () => {
+      el.classList.remove("dragging");
+      currentDragging = null;
+      persistBuildingOrder(list);
+    };
+    el._onDragStart = onDragStart;
+    el._onDragEnd = onDragEnd;
+    el.addEventListener("dragstart", onDragStart);
+    el.addEventListener("dragend", onDragEnd);
+  });
+
+  function getAfterElement(container, y) {
+    const els = [
+      ...container.querySelectorAll(".building-block:not(.dragging)"),
+    ];
+    return els.reduce(
+      (closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset)
+          return { offset, element: child };
+        return closest;
+      },
+      { offset: -Infinity, element: null }
+    ).element;
+  }
+}
+
+function persistBuildingOrder(list) {
+  const order = [...list.querySelectorAll(".building-block")].map((el, idx) => {
+    const bid = el.dataset.bid || el.id?.replace("building-block-", "");
+    const b = buildings.find((x) => getSafeId(x) === bid);
+    if (b) b.sortIndex = idx;
+    return bid;
+  });
+
+  // Trie le modèle en mémoire pour rester cohérent avec l'UI
+  buildings.sort((a, b) => (a.sortIndex ?? 0) - (b.sortIndex ?? 0));
+
+  // On conserve l'ordre courant (utilisé à la sauvegarde)
+  window.BUILDING_ORDER = order;
+
+  scheduleAutoSave?.(500);
 }
