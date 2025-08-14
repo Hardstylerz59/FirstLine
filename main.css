@@ -1,7 +1,7 @@
 /* === RESET & BASE === */
 :root {
-  --btn-bg: #254d74ab;
-  --btn-hover-bg: #1c2f4e;
+  --btn-bg: #10346d;
+  --btn-hover-bg: #194da1;
   --btn-text: #ffffff;
   --btn-border: #000000;
 
@@ -9,8 +9,8 @@
   --btn-danger-hover: #c0392b;
   --btn-warning-bg: #e67e22;
   --btn-warning-hover: #d35400;
-  --btn-secondary-bg: #2f5eaa;
-  --btn-secondary-hover: #8e939b;
+  --btn-secondary-bg: #10346d;
+  --btn-secondary-hover: #194da1;
 }
 
 * {
@@ -730,8 +730,8 @@ body.modal-open {
 #btn-service-police {
   padding: 6px 12px;
   border-radius: 6px;
-  border: 1px solid #cbd6df;
-  background: #eef3f8;
+  border: 1px solid #194da1;
+  background: #10346d;
 }
 #btn-service-pompiers.active,
 #btn-service-police.active {
@@ -1873,6 +1873,11 @@ th.sorted {
   align-items: center;
   gap: 12px;
   margin-bottom: 8px;
+  flex-direction: column;
+  padding-right: 30px; /* laisse la place à la croix */
+}
+.calls-header h2 {
+  margin: 0;
 }
 
 .calls-stats .chip {
@@ -2058,4 +2063,26 @@ th.sorted {
   .modal-content.extra-large {
     max-width: 1760px;
   }
+}
+
+/* Bouton de fermeture (croix) en haut à droite des modales */
+.modal-content .modal-close {
+  position: absolute;
+  top: 8px; /* au lieu de 10px */
+  right: 8px; /* au lieu de 12px */
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1200;
+}
+
+.modal-content .modal-close.close-red {
+  color: #c62828; /* rouge */
+}
+
+.modal-content .modal-close.close-red:hover {
+  filter: brightness(0.9);
+  transform: scale(1.05);
 }

@@ -444,6 +444,7 @@ async function createMission() {
   //missionList.appendChild(li);
   missions.push(mission);
   incCallStatsFor(mission);
+  scheduleAutoSave?.(500);
 
   // MAJ UI live (panneau ouvert) + badge + clignotement du bouton
   notifyMissionsChanged();

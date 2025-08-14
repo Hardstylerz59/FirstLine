@@ -12,6 +12,10 @@ function incCallStatsFor(mission) {
   const p = getProvenanceLabel(mission);
   if (!(p in window.CALL_STATS.bySource)) window.CALL_STATS.bySource[p] = 0;
   window.CALL_STATS.bySource[p]++;
+
+  // ➕ Mise à jour de l’UI + sauvegarde
+  updatePendingBadgeAndHistory?.();
+  scheduleAutoSave?.(500);
 }
 
 const ADDRESS_INTROS = [
@@ -3322,13 +3326,27 @@ function getProvenanceLabel(m) {
   }
 }
 
-// Un appel est "déjà traité" si le jeu décide d'afficher "Gérer" plutôt que "Traiter"
 function isCallHandled(m) {
-  // Un appel est "traité" uniquement si on a réellement démarré le traitement
-  return !!m.progressStarted; // ← simple et fiable
+  // "Traité" si progression démarrée, mission active,
+  // ou au moins un engin engagé (AT/ER/AL/OT/TR/CH)
+  if (m.progressStarted || m.active) return true;
+  return (m.dispatched || []).some(
+    (d) =>
+      !d.canceled &&
+      d.vehicle &&
+      ["at", "er", "al", "ot", "tr", "ch"].includes(d.vehicle.status)
+  );
 }
+
 function isCallInProgress(m) {
-  return !!m.active; // si tu différencies "en cours" vs "traité"
+  // "En cours" si mission active ou si au moins un engin est déjà engagé
+  if (m.active) return true;
+  return (m.dispatched || []).some(
+    (d) =>
+      !d.canceled &&
+      d.vehicle &&
+      ["at", "er", "al", "ot", "tr", "ch"].includes(d.vehicle.status)
+  );
 }
 
 function formatDurationMs(ms) {
@@ -3536,7 +3554,7 @@ function getMissionTypeLabel(m) {
 // Véhicule sur place ?
 function hasVehicleOnScene(m) {
   return (m.dispatched || []).some(
-    (d) => !d.canceled && d.vehicle && d.vehicle.status === "at"
+    (d) => !d.canceled && d.vehicle && d.vehicle.status === "al"
   );
 }
 

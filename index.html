@@ -318,6 +318,15 @@
       <!-- Panneau plein-écran : Réception des appels -->
       <div id="calls-panel" class="hidden modal-overlay">
         <div class="modal-content extra-large">
+          <button
+            class="modal-close close-red"
+            aria-label="Fermer"
+            title="Fermer"
+            onclick="closeCallsPanel()"
+          >
+            ✖
+          </button>
+
           <div class="calls-header">
             <h2>📞 Réception des appels</h2>
             <div class="calls-stats">
@@ -353,6 +362,15 @@
 
       <div id="call-modal" class="hidden modal-overlay">
         <div class="modal-content extra-large">
+          <button
+            class="modal-close close-red"
+            aria-label="Fermer"
+            title="Fermer"
+            onclick="closeCallModal()"
+          >
+            ✖
+          </button>
+
           <!-- Encadré de prise d'appel (dialogue) -->
           <section class="call-card span-all">
             <header class="call-card-h">Prise d'appel</header>
