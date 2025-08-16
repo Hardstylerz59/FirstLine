@@ -2,10 +2,6 @@
 let currentManagedBuilding = null;
 window.MANUAL_BUILDING_ORDER = false;
 
-function getSafeId(building) {
-  return `${building.type}-${building.name}`.toLowerCase().replace(/\s+/g, "-");
-}
-
 map.on("click", (e) => {
   if (!addMode || !currentBuilding) return;
 

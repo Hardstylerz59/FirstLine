@@ -1691,15 +1691,23 @@ function stopActiveRoute(vehicle) {
 if (typeof window.getMsPerMeter !== "function") {
   window.getMsPerMeter = function getMsPerMeter(vehicle) {
     try {
-      return (
-        (window.VEHICLE_SPEED_BY_TYPE && VEHICLE_SPEED_BY_TYPE[vehicle.type]) ||
-        20
-      );
+      const base =
+        (window.VEHICLE_SPEED_BY_TYPE &&
+          VEHICLE_SPEED_BY_TYPE[vehicle?.type]) ||
+        20;
+      const w =
+        (typeof window.currentWeather !== "undefined" &&
+          window.currentWeather) ||
+        "soleil";
+      const mult =
+        (window.WEATHER_SPEED_MULTIPLIER && WEATHER_SPEED_MULTIPLIER[w]) || 1.0;
+      return base * mult; // applique le ralentissement selon la météo
     } catch (_) {
       return 20;
     }
   };
 }
+
 if (typeof window.computeTravelDurationMs !== "function") {
   window.computeTravelDurationMs = function computeTravelDurationMs(
     distanceMeters,

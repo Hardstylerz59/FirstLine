@@ -1,16 +1,46 @@
-/* === RESET & BASE === */
+/* === Palette minimale (mêmes couleurs qu'actuellement) === */
 :root {
-  --btn-bg: #10346d;
-  --btn-hover-bg: #194da1;
+  /* UI générique */
+  --ui-bg: #ffffff;
+  --ui-bg-alt: #f0f2f5;
+  --ui-panel: #f8fbfe;
+  --ui-border: #d7e2ea;
+  --text: #333;
+  --text-muted: #555;
+  --overlay: rgba(0, 0, 0, 0.5);
+  --shadow-sm: rgba(0, 0, 0, 0.1);
+  --shadow-md: rgba(0, 0, 0, 0.25);
+
+  /* Topbar */
+  --topbar-bg: #1e1e2f;
+  --topbar-fg: #ffffff;
+
+  /* Boutons (une seule paire primaire + hover) */
+  --btn-bg: #10346d; /* primaire (déjà utilisé partout) */
+  --btn-hover-bg: #194da1; /* hover primaire */
   --btn-text: #ffffff;
   --btn-border: #000000;
 
-  --btn-danger-bg: #e74c3c;
-  --btn-danger-hover: #c0392b;
-  --btn-warning-bg: #e67e22;
-  --btn-warning-hover: #d35400;
-  --btn-secondary-bg: #10346d;
-  --btn-secondary-hover: #194da1;
+  /* Accent (réouvrir, liens bleus) — même couleur pour tout + hover */
+  --accent: #007bff;
+  --accent-hover: #0056b3;
+
+  /* Danger + Warning (mêmes couleurs qu’actuelles, un seul hover chacun) */
+  --danger: #e74c3c;
+  --danger-hover: #c0392b;
+  --warning: #e67e22;
+  --warning-hover: #d35400;
+
+  /* Statuts — on garde les codes & couleurs que tu avais */
+  --stat-dc: green; /* dispo */
+  --stat-er: red; /* en route */
+  --stat-al: red; /* alerte */
+  --stat-tr: red; /* transit */
+  --stat-ch: red; /* chez patient (si rouge chez toi) */
+  --stat-at: red; /* at… (rouge chez toi) */
+  --stat-ot: blue; /* occupé terrain */
+  --stat-nd: gray; /* non dispo */
+  --stat-hs: gray; /* HS */
 }
 
 * {
@@ -34,14 +64,14 @@ body,
 
 body {
   overflow: hidden;
-  background: #f0f2f5;
-  color: #333;
+  background: var(--ui-bg-alt);
+  color: var(--text);
 }
 
 /* === TOP BAR === */
 #top-bar {
-  background: #1e1e2f;
-  color: #fff;
+  background: var(--topbar-bg);
+  color: var(--topbar-fg);
   padding: 0px 20px;
   font-size: 0.95rem;
   display: flex;
@@ -54,7 +84,7 @@ body {
   right: 0;
   height: 56px; /* ou ta hauteur réelle */
   z-index: 3000; /* au-dessus de map, panneaux, boutons */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px var(--shadow-sm);
 }
 
 #top-bar > * {
@@ -86,13 +116,6 @@ body {
 }
 #top-bar button:hover {
   background: var(--btn-hover-bg);
-}
-
-/* === GAME CONTAINER === */
-#game-container {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
 }
 
 .panel-hidden {
@@ -135,7 +158,7 @@ body {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: #007bff;
+  background: var(--accent);
   color: white;
   padding: 5px 1px;
   border: none;
@@ -147,7 +170,7 @@ body {
 }
 
 .reopen-btn:hover {
-  background: #0056b3;
+  background: var(--accent-hover);
 }
 
 .reopen-btn[style*="right"] {
@@ -160,7 +183,7 @@ body {
   bottom: 0;
   left: 0;
   width: 250px;
-  background: white;
+  background: var(--ui-bg);
   z-index: 1001;
   overflow: hidden; /* ✅ Plus aucun scroll ici */
   display: flex;
@@ -181,7 +204,7 @@ body {
   bottom: 0; /* jusqu’en bas */
   right: 0;
   width: 250px;
-  background: white;
+  background: var(--ui-bg);
   z-index: 1001;
   overflow-y: auto; /* ✅ permet de scroller si contenu trop long */
   display: flex;
@@ -191,7 +214,7 @@ body {
 #reopen-interventions-btn,
 #reopen-buildings-btn {
   cursor: pointer;
-  background-color: #007bff;
+  background-color: var(--accent);
   color: white;
   border: none;
   border-radius: 0 4px 4px 0;
@@ -254,7 +277,7 @@ body {
 /* === SIDEBAR === */
 #sidebar {
   width: 360px;
-  background: #fff;
+  background: var(--color-bg);
   border-right: 1px solid #ccc;
   display: flex;
   flex-direction: column;
@@ -272,7 +295,7 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--ui-border);
 }
 
 #add-building-btn {
@@ -301,16 +324,16 @@ body {
   gap: 10px;
 }
 #building-list li {
-  background: white;
+  background: var(--ui-bg);
   border-radius: 8px;
   padding: 12px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 6px var(--shadow-sm);
 }
 
 .building-block {
   width: 100%;
   min-width: 0;
-  background: white;
+  background: var(--ui-bg);
   border-radius: 12px;
   padding: 18px 16px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* 💪 Ombre plus forte */
@@ -369,21 +392,21 @@ body {
   color: white;
 }
 .status.dc {
-  background-color: green;
+  background-color: var(--stat-dc);
 }
 .status.er,
 .status.al,
 .status.tr,
 .status.ch,
 .status.at {
-  background-color: red;
+  background-color: var(--stat-er);
 }
 .status.ot {
-  background-color: blue;
+  background-color: var(--stat-ot);
 }
 .status.nd,
 .status.hs {
-  background-color: gray;
+  background-color: var(--stat-nd);
 }
 
 /* === MAP === */
@@ -407,11 +430,11 @@ body {
 }
 
 #mission-list li {
-  background-color: #ffffff;
+  background-color: var(--ui-bg);
   border-radius: 8px;
   padding: 14px 18px;
   margin-bottom: 16px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 5px var(--shadow-sm);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -456,7 +479,7 @@ body {
 
 #mission-list li button {
   padding: 8px 12px;
-  background-color: #007bff;
+  background-color: var(--accent);
   color: white;
   border: none;
   cursor: pointer;
@@ -472,7 +495,7 @@ body {
 }
 
 #mission-list li button:hover {
-  background-color: #0056b3;
+  background-color: var(--accent-hover);
 }
 
 /* === HISTORY MODAL === */
@@ -489,7 +512,7 @@ body {
   list-style: none;
   padding: 8px 12px;
   font-size: 0.95rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--ui-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -504,7 +527,7 @@ body {
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -515,7 +538,7 @@ body {
 }
 
 .modal-content {
-  background: white;
+  background: var(--ui-bg);
   padding: 28px;
   border-radius: 12px;
   width: 90%;
@@ -585,7 +608,7 @@ button:active {
 button.danger {
   background: var(--btn-danger-bg);
   border-color: transparent;
-  color: #fff;
+  color: var(--topbar-fg);
 }
 button.danger:hover {
   background: var(--btn-danger-hover);
@@ -594,38 +617,21 @@ button.danger:hover {
 button.warning {
   background: var(--btn-warning-bg);
   border-color: transparent;
-  color: #fff;
+  color: var(--topbar-fg);
 }
 button.warning:hover {
   background: var(--btn-warning-hover);
 }
 
 button.secondary {
-  background: var(--btn-secondary-bg);
-  color: #fff;
+  background: var(--btn-bg);
+  color: var(--topbar-fg);
 }
 button.secondary:hover {
-  background: var(--btn-secondary-hover);
+  background: var(--btn-bg);
 }
 
 /* === AUTRES === */
-/* ===== Call modal XL (même gabarit que réception) ===== */
-.modal-content.extra-large {
-  width: 1280px; /* largeur cible desktop */
-  max-width: calc(100vw - 96px); /* même marges latérales que la réception */
-  border-radius: 10px;
-}
-
-.modal-content.extra-large .modal-header,
-.modal-content.extra-large .modal-footer {
-  padding: 18px 22px;
-}
-
-.modal-content.extra-large .modal-body {
-  padding: 0 22px 18px 22px;
-  max-height: calc(100vh - 220px); /* hauteur utile (header+footer+marges) */
-  overflow: auto; /* scroll interne comme la réception */
-}
 
 /* verrouillage du scroll arrière-plan quand une modale est ouverte */
 body.modal-open {
@@ -662,29 +668,16 @@ body.modal-open {
   resize: vertical;
 }
 
-/* boutons Pompiers / Police harmonisés */
-/* ======== CALL LAYOUT (NEXSIS-LIKE) ======== */
-.modal-content.extra-large .modal-body {
-  max-height: calc(100vh - 210px);
-  overflow: auto;
-}
-
-.call-grid {
-  display: grid;
-  grid-template-columns: 2fr 1.1fr 1.2fr 1.6fr 1.1fr; /* Carte • Adresse • Départ • Véhicules • Récap */
-  gap: 14px;
-  min-height: calc(82vh - 40px);
-  padding: 6px 2px 14px 2px;
-}
-
 .call-card {
   background: #fff;
-  border: 1px solid #d7e2ea;
+  border: 1px solid var(--color-panel-border);
   border-radius: 8px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
   display: flex;
   flex-direction: column;
   min-height: 100px;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* Étend la zone véhicules pour utiliser toute la hauteur disponible */
@@ -728,17 +721,10 @@ body.modal-open {
   display: flex;
   align-items: center;
   padding: 8px 10px;
-  border: 1px solid #d7e2ea;
+  border: 1px solid var(--ui-border);
   border-radius: 6px;
-  background: #f8fbfe;
+  background: var(--ui-panel);
   font-size: 14px;
-}
-
-#call-mini-map {
-  height: 100%;
-  min-height: 300px;
-  border-radius: 6px;
-  overflow: hidden;
 }
 
 /* segmented buttons */
@@ -752,7 +738,7 @@ body.modal-open {
 #btn-service-pompiers.active,
 #btn-service-police.active {
   background: #5e7997;
-  color: #fff;
+  color: var(--topbar-fg);
   border-color: #5e7997;
 }
 
@@ -781,22 +767,6 @@ body.modal-open {
 .recap-ul {
   margin: 0;
   padding-left: 18px;
-}
-
-/* responsive */
-@media (max-width: 1600px) {
-  .call-grid {
-    grid-template-columns: 1.8fr 1fr 1.1fr 1.5fr 1fr;
-  }
-}
-@media (max-width: 1360px) {
-  .call-grid {
-    grid-template-columns: 1.8fr 1fr 1fr;
-  }
-  #call-card-vehicles,
-  #call-card-recap {
-    grid-column: 1 / -1;
-  }
 }
 
 .modal-section {
@@ -828,16 +798,16 @@ body.modal-open {
   display: flex;
   justify-content: space-between;
   padding: 8px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--ui-border);
 }
 .vehicle-delete-list button {
-  background-color: #e74c3c;
+  background-color: var(--danger);
   color: white;
   padding: 4px 8px;
   border-radius: 4px;
 }
 .vehicle-delete-list button:hover {
-  background-color: #c0392b;
+  background-color: var(--danger-hover);
 }
 
 .toast-notification {
@@ -845,7 +815,7 @@ body.modal-open {
   top: 60px;
   left: 50%;
   transform: translateX(-50%) translateY(-20px);
-  background: #2ecc71;
+  background: var(--accent);
   color: white;
   padding: 14px 24px;
   border-radius: 8px;
@@ -856,7 +826,7 @@ body.modal-open {
   transition: opacity 0.3s ease, transform 0.3s ease;
   pointer-events: none;
   max-width: 90vw;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 12px var(--shadow-md);
 }
 
 .toast-notification.visible {
@@ -866,13 +836,13 @@ body.modal-open {
 
 /* Types */
 .toast-success {
-  background: #2ecc71;
+  background: var(--accent);
 }
 .toast-error {
-  background: #e74c3c;
+  background: var(--danger);
 }
 .toast-info {
-  background: #3498db;
+  background: var(--accent);
 }
 .toast-level {
   background: #9b59b6;
@@ -891,9 +861,9 @@ body.modal-open {
 .building-group {
   margin-bottom: 12px;
   padding: 8px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--ui-border);
   border-radius: 6px;
-  background: #f9f9f9;
+  background: var(--ui-bg);
 }
 
 .building-header {
@@ -928,7 +898,7 @@ body.modal-open {
   align-items: center;
   padding: 6px 10px;
   column-gap: 8px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--ui-border);
   border-radius: 4px;
   cursor: pointer;
   transition: background 0.3s, background-color 0.3s, color 0.3s;
@@ -975,7 +945,7 @@ body.modal-open {
   grid-column: 3;
   text-align: right;
   font-size: 0.85rem;
-  color: #555;
+  color: var(--text-muted);
 }
 .status {
   grid-column: 4;
@@ -1025,7 +995,7 @@ body.modal-open {
   align-items: center;
   gap: 12px;
   padding: 6px 8px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--ui-border);
 }
 
 .vehicle-actions {
@@ -1042,7 +1012,7 @@ body.modal-open {
 }
 
 .vehicle-entry .btn-cancel {
-  background: #e74c3c;
+  background: var(--danger);
   color: white;
   border: none;
   padding: 4px 8px;
@@ -1052,7 +1022,7 @@ body.modal-open {
 }
 
 .vehicle-entry .btn-cancel:hover {
-  background: #c0392b;
+  background: var(--danger-hover);
 }
 
 .btn-cancel {
@@ -1070,7 +1040,7 @@ body.modal-open {
 
 .mission-timer {
   font-size: 0.85rem;
-  color: #333;
+  color: var(--text);
   margin-top: 4px;
 }
 
@@ -1079,7 +1049,7 @@ body.modal-open {
   top: 10%; /* plus bas qu'en haut de l'écran */
   left: 50%;
   transform: translateX(-50%);
-  background: white;
+  background: var(--ui-bg);
   padding: 12px 20px;
   border-radius: 10px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
@@ -1194,7 +1164,7 @@ body.modal-open {
   justify-content: center;
   height: 100vh;
   background: linear-gradient(135deg, #2980b9, #6dd5fa);
-  color: #fff;
+  color: var(--topbar-fg);
   padding: 20px;
 }
 
@@ -1215,7 +1185,7 @@ body.modal-open {
 
 .auth-container button {
   padding: 10px 20px;
-  background-color: #2ecc71;
+  background-color: var(--accent);
   border: none;
   border-radius: 6px;
   font-size: 1rem;
@@ -1234,13 +1204,9 @@ body.modal-open {
 }
 
 .auth-container a {
-  color: #fff;
+  color: var(--topbar-fg);
   text-decoration: underline;
   cursor: pointer;
-}
-
-.hidden {
-  display: none !important;
 }
 
 .connected-user {
@@ -1287,12 +1253,12 @@ body.modal-open {
 .filter-btn {
   font-size: 12px;
   padding: 4px 6px;
-  border: 1px solid #ccc;
-  background: #f0f0f0;
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
   cursor: pointer;
 }
 .filter-btn:hover {
-  background: #ddd;
+  background: var(--btn-hover-bg);
 }
 
 #add-building-fab {
@@ -1356,8 +1322,8 @@ body.modal-open {
 }
 
 .btn-transport {
-  background: #1693d7;
-  color: #fff;
+  background: var(--accent);
+  color: var(--topbar-fg);
   border: none;
   padding: 2px 8px;
   border-radius: 4px;
@@ -1367,23 +1333,23 @@ body.modal-open {
   transition: background 0.2s;
 }
 .btn-transport:hover {
-  background: #126ca7;
+  background: var(--accent);
 }
 
 .vehicle-list-scroll {
   max-height: 260px; /* ou ajuste selon ton design, ex 6-8 lignes */
   overflow-y: auto;
-  border: 1px solid #ddd;
+  border: 1px solid var(--ui-border);
   border-radius: 6px;
   padding: 0;
   margin-bottom: 12px;
-  background: #f9f9f9;
+  background: var(--ui-bg);
 }
 
 /* Améliore le style si besoin */
 .vehicle-list-scroll li {
   padding: 6px 8px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--ui-border);
 }
 .vehicle-list-scroll li:last-child {
   border-bottom: none;
@@ -1524,7 +1490,7 @@ body.modal-open {
   font-size: 15px; /* Texte réduit */
   border-radius: 8px;
   font-weight: 500;
-  background: #3498db; /* La couleur d’origine, ajuste si besoin */
+  background: var(--accent); /* La couleur d’origine, ajuste si besoin */
   color: white;
   border: none;
   transition: background 0.2s;
@@ -1637,8 +1603,8 @@ th.sorted {
 .manage-btn {
   padding: 3px 10px;
   border-radius: 6px;
-  background: #2980b9;
-  color: #fff;
+  background: var(--accent);
+  color: var(--topbar-fg);
   border: none;
   font-size: 0.96em;
   cursor: pointer;
@@ -1726,7 +1692,7 @@ th.sorted {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--overlay);
   z-index: 9999;
   display: flex;
   justify-content: center;
@@ -1734,7 +1700,7 @@ th.sorted {
 }
 
 .loader-box {
-  background: white;
+  background: var(--ui-bg);
   padding: 20px 30px;
   border-radius: 10px;
   text-align: center;
@@ -1796,30 +1762,6 @@ th.sorted {
 .building-group.police {
   border-left: 4px solid #3498db;
   padding-left: 6px;
-}
-
-#env-info {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  margin-right: 10px;
-}
-
-.env-block {
-  display: flex;
-  align-items: center;
-  background: #1e1e2f;
-  padding: 4px 10px;
-  border-radius: 8px;
-  color: #fff;
-  font-weight: bold;
-  font-size: 14px;
-  gap: 6px;
-}
-
-.env-block img {
-  width: 20px;
-  height: 20px;
 }
 
 /* Regroupe infos joueur + barre d'XP */
@@ -1894,14 +1836,6 @@ th.sorted {
   display: block;
 }
 
-/* Panneau d'appels quasi pleine page */
-.modal-content.extra-large {
-  width: 96vw;
-  max-width: 1680px;
-  max-height: 85vh; /* ↓ réduit pour éviter le scroll fantôme */
-  overflow: auto;
-}
-
 .calls-header {
   display: flex;
   justify-content: space-between;
@@ -1932,7 +1866,7 @@ th.sorted {
   overflow: auto;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  background: white;
+  background: var(--ui-bg);
 }
 
 .calls-table {
@@ -1964,7 +1898,7 @@ th.sorted {
   font-size: 12px;
   line-height: 1;
   background: #111827;
-  color: #fff;
+  color: var(--topbar-fg);
   text-align: center;
 }
 
@@ -1979,7 +1913,7 @@ th.sorted {
   position: fixed; /* <- au lieu de absolute si c'est le cas */
   inset: 0; /* top/left/right/bottom:0 */
   z-index: 9999; /* au-dessus de tes sidebars */
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--shadow-md);
 }
 
 /* Assure que le contenu de la modale statistiques passe AU-DESSUS de l'overlay */
@@ -1991,15 +1925,6 @@ th.sorted {
   z-index: 10001;
 }
 
-/* Taille quasi plein-écran (si pas déjà présent) */
-.modal-content.extra-large {
-  width: 92vw;
-  max-width: 1400px;
-  height: 82vh;
-  display: flex;
-  flex-direction: column;
-}
-
 /* Clignotement rouge du bouton "Appels en attente" quand un nouvel appel arrive */
 #open-calls-panel.notify {
   animation: blink-red 1s infinite;
@@ -2008,11 +1933,11 @@ th.sorted {
   0%,
   100% {
     background: #b91c1c;
-    color: #fff;
+    color: var(--topbar-fg);
   }
   50% {
     background: #ef4444;
-    color: #fff;
+    color: var(--topbar-fg);
   }
 }
 
@@ -2020,17 +1945,15 @@ th.sorted {
 .calls-table button {
   transition: background-color 0.15s ease, color 0.15s ease;
 }
-/* Modale XL : moins haute pour éviter le scroll fantôme */
+
+/* === MODAL XL — Canonique === */
 .modal-content.extra-large {
   width: 96vw;
   max-width: 1680px;
-  max-height: 90vh; /* ↓ au lieu de 96vh */
-  overflow: auto;
-}
-
-/* le contenu interne peut scroller si besoin */
-.modal-content.extra-large {
-  overflow: auto;
+  max-height: 90vh; /* hauteur max, pas de scroll fantôme */
+  display: flex; /* structure en colonne */
+  flex-direction: column;
+  overflow: auto; /* le contenu interne peut scroller */
 }
 
 /* grille plus haute pour profiter de la place */
@@ -2047,14 +1970,8 @@ th.sorted {
   grid-column: 1 / -1;
 }
 
-#call-mini-map {
-  min-height: 280px;
-  border-radius: 6px;
-  overflow: hidden;
-} /* ↓ hauteur */
-
 /* Lignes véhicules: grille propre (plus de superposition) */
-.vehicle-select-row {
+.modal-content.extra-large .vehicle-select-row {
   display: grid !important; /* force sur flex éventuel */
   grid-template-columns: 22px 1fr 90px auto; /* [☑] [Libellé] [Distance] [Statut] */
   align-items: center;
@@ -2062,12 +1979,12 @@ th.sorted {
   padding: 6px 10px;
   border-radius: 6px;
 }
-.vehicle-select-row .vehicle-label {
+.modal-content.extra-large .vehicle-select-row .vehicle-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.vehicle-select-row .vehicle-distance {
+.modal-content.extra-large .vehicle-select-row .vehicle-distance {
   text-align: right;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -2075,7 +1992,7 @@ th.sorted {
 }
 
 /* Statut (DC/OT…) en badge */
-.vehicle-select-row .status {
+.modal-content.extra-large .vehicle-select-row .status {
   justify-self: end;
   white-space: nowrap;
   display: inline-block;
@@ -2086,27 +2003,13 @@ th.sorted {
   border: 1px solid rgba(0, 0, 0, 0.15);
 }
 
-/* Responsive */
-@media (max-width: 1360px) {
-  .call-grid {
-    grid-template-columns: 1.8fr 1.4fr;
-  }
-  #call-card-vehicles,
-  #call-card-recap {
-    grid-column: 1 / -1;
-  }
-}
-
 /* mini-carte un peu plus haute */
 #call-mini-map {
+  flex: 1 1 auto;
+  height: 100%;
   min-height: 380px;
-}
-
-/* points de rupture : garder large */
-@media (min-width: 1800px) {
-  .modal-content.extra-large {
-    max-width: 1760px;
-  }
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 /* Bouton de fermeture (croix) en haut à droite des modales */

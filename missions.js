@@ -201,30 +201,6 @@ if (typeof window.progressVehicle !== "function") {
   };
 }
 
-function getMsPerMeter(vehicle) {
-  const base =
-    (typeof VEHICLE_SPEED_BY_TYPE !== "undefined" &&
-      VEHICLE_SPEED_BY_TYPE[vehicle?.type]) ||
-    20; // ms par mètre de base
-  const w =
-    (typeof currentWeather !== "undefined" && currentWeather) || "soleil";
-  const mult =
-    (window.WEATHER_SPEED_MULTIPLIER && window.WEATHER_SPEED_MULTIPLIER[w]) ||
-    1.0;
-  return base * mult; // applique le ralentissement selon la météo
-}
-
-function computeTravelDurationMs(distanceMeters, msPerMeter) {
-  return distanceMeters * msPerMeter;
-}
-
-function setVehicleArrivalFromDistance(vehicle, distanceMeters) {
-  const msPerMeter = getMsPerMeter(vehicle);
-  const duration = computeTravelDurationMs(distanceMeters, msPerMeter);
-  vehicle.arrivalTime = Date.now() + duration;
-  return { duration, msPerMeter };
-}
-
 if (typeof window.stopActiveRoute !== "function") {
   window.stopActiveRoute = function stopActiveRoute(vehicle) {
     if (!vehicle) return;
