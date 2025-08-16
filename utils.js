@@ -1653,6 +1653,9 @@ function animateAlongRoute({
       if (raf) cancelAnimationFrame(raf);
       raf = null;
     },
+    stop() {
+      this.cancel();
+    }, // alias pour stopActiveRoute()
   };
 }
 
@@ -1670,9 +1673,12 @@ function stopActiveRoute(vehicle) {
     cancelAnimationFrame(ra);
   }
   // Cas RouteAnimator: handler/objet avec stop()
-  else if (ra && typeof ra.stop === "function") {
+  else if (
+    ra &&
+    (typeof ra.stop === "function" || typeof ra.cancel === "function")
+  ) {
     try {
-      ra.stop();
+      (ra.stop || ra.cancel).call(ra);
     } catch (_) {}
   }
   vehicle.returnAnimation = null;

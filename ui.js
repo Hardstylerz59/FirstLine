@@ -229,6 +229,14 @@ let vehicleListInterval = null;
 
 function openCallModal(missionId) {
   currentCallMission = missions.find((m) => m.id === missionId);
+  // Vider les observations si on ouvre une mission différente
+  if (window._lastCallModalMissionId !== missionId) {
+    const obs = document.getElementById("call-observations");
+    if (obs) obs.value = "";
+    if (currentCallMission) currentCallMission.observations = "";
+    window._lastCallModalMissionId = missionId;
+  }
+
   if (!currentCallMission.createdAt) {
     currentCallMission.createdAt = Date.now();
   }
@@ -290,7 +298,6 @@ function openCallModal(missionId) {
   buildDepartTreeUI();
 
   // Section véhicules
-  document.getElementById("vehicle-selection-section").classList.add("hidden");
   document.getElementById("vehicle-list").innerHTML = "";
   document.getElementById("launch-mission-btn").classList.add("hidden");
 
@@ -454,13 +461,10 @@ function buildVehicleListForCall(autoSelect = true) {
     const header = document.createElement("div");
     header.className = "building-header";
     header.innerHTML = `
-      <strong>${shortType} ${building.name}</strong>
-      – 👥 Dispo:<span class="perso-left"
-            data-building-id="${building.id}"
-            data-total="${personnelTotal}">
-        ${personnelDispo}
-      </span> / ${personnelTotal}
+      <span class="bh-left"><strong>${shortType} ${building.name}</strong></span>
+      <span class="bh-right"><span class="grp-label">Dispo&nbsp;:</span><span class="grp-count"><span class="perso-left" data-building-id="${building.id}" data-total="${personnelTotal}">${personnelDispo}</span>/<span>${personnelTotal}</span></span></span>
     `;
+
     if (personnelDispo === 0) header.classList.add("no-staff");
     section.appendChild(header);
 
@@ -801,7 +805,6 @@ document.getElementById("reveal-address-btn").addEventListener("click", () => {
     });
 
   // Cache les sections non pertinentes au clic
-  document.getElementById("vehicle-selection-section").classList.add("hidden");
   document.getElementById("vehicle-list").innerHTML = "";
   document.getElementById("launch-mission-btn").classList.add("hidden");
 });
@@ -1137,13 +1140,10 @@ function buildVehicleListForReinforcement() {
     const header = document.createElement("div");
     header.className = "building-header";
     header.innerHTML = `
-      <strong>${shortType} ${building.name}</strong>
-      – 👥 Dispo:<span class="perso-left"
-            data-building-id="${building.id}"
-            data-total="${personnelTotal}">
-        ${personnelDispo}
-      </span> / ${personnelTotal}
+      <span class="bh-left"><strong>${shortType} ${building.name}</strong></span>
+      <span class="bh-right"><span class="grp-label">Dispo&nbsp;:</span><span class="grp-count"><span class="perso-left" data-building-id="${building.id}" data-total="${personnelTotal}">${personnelDispo}</span>/<span>${personnelTotal}</span></span></span>
     `;
+
     if (personnelDispo === 0) header.classList.add("no-staff");
     section.appendChild(header);
 
@@ -2340,9 +2340,6 @@ function buildDepartTreeUI() {
     rowSub.classList.add("hidden");
     currentCallMission.departSelected = null;
     currentCallMission.departLabel = null;
-    document
-      .getElementById("vehicle-selection-section")
-      .classList.add("hidden");
     launchBtn.classList.add("hidden");
   };
 
@@ -2402,9 +2399,6 @@ function buildDepartTreeUI() {
       }
       currentCallMission.departSelected = null;
       currentCallMission.departLabel = null;
-      document
-        .getElementById("vehicle-selection-section")
-        .classList.add("hidden");
       launchBtn.classList.add("hidden");
     } else {
       // Directement une liste d’engins requise

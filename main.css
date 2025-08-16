@@ -687,6 +687,22 @@ body.modal-open {
   min-height: 100px;
 }
 
+/* Étend la zone véhicules pour utiliser toute la hauteur disponible */
+#call-card-vehicles {
+  display: flex;
+  flex-direction: column;
+}
+#vehicle-selection-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+#vehicle-list {
+  flex: 1;
+  overflow: auto;
+}
+
 .call-card-h {
   padding: 10px 12px;
   font-weight: 700;
@@ -886,6 +902,23 @@ body.modal-open {
   align-items: center;
   margin-bottom: 10px;
   font-weight: bold;
+}
+
+.building-header .bh-left {
+  display: flex;
+  align-items: center;
+}
+.building-header .bh-right {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+.building-header .grp-label {
+  opacity: 0.85;
+}
+.building-header .grp-count {
+  font-variant-numeric: tabular-nums;
 }
 
 /* === COMMUN === */
@@ -1949,6 +1982,15 @@ th.sorted {
   background: rgba(0, 0, 0, 0.25);
 }
 
+/* Assure que le contenu de la modale statistiques passe AU-DESSUS de l'overlay */
+.modal-statistics .modal-overlay {
+  z-index: 9999;
+}
+.modal-statistics .modal-content {
+  position: relative;
+  z-index: 10001;
+}
+
 /* Taille quasi plein-écran (si pas déjà présent) */
 .modal-content.extra-large {
   width: 92vw;
@@ -2126,3 +2168,55 @@ th.sorted {
   font-weight: 700;
   opacity: 0.55;
 }
+
+/* === Modal prise d'appel : mettre toute la hauteur à la colonne véhicules === */
+
+/* Le contenu de la modal occupe l'écran (et permet le scroll interne) */
+.modal.call-modal .modal-content {
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh; /* ajuste si besoin */
+}
+
+/* Le corps de la modal en 3 colonnes, sans scroll latéral parasite */
+.modal.call-modal .modal-body {
+  display: flex;
+  gap: 1rem;
+  overflow: hidden; /* crucial pour éviter les scrolls imbriqués */
+  min-height: 0; /* permet aux enfants de prendre la hauteur */
+}
+
+/* Chaque colonne peut s'étirer et laisser ses enfants scroller */
+.modal.call-modal .modal-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* indispensable avec flex */
+}
+
+/* Carte véhicules = carte/encadré principal "Véhicules disponibles" */
+#call-card-vehicles {
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* pour que le bloc liste puisse scroller */
+}
+
+/* La section "Véhicules disponibles" prend tout l'espace restant */
+#vehicle-selection-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden; /* le scroll sera sur la liste */
+}
+
+/* La liste elle-même occupe 100% de la hauteur disponible et scrolle */
+#vehicle-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  max-height: none !important; /* supprime tout plafond hérité */
+}
+
+/* Si les items sont dans un wrapper interne (ex. .vehicle-items), décommente :
+.vehicle-items { flex: 1 1 auto; min-height: 0; overflow: auto; }
+*/

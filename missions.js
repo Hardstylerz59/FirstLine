@@ -1052,9 +1052,19 @@ function dispatchReinforcementsToMission(mission, vehiclesList) {
           marker: vehicle.marker,
           onProgress: ({ pos }) => {
             if (!pos) return;
+            const d = mission.dispatched.find(
+              (dd) => dd.vehicle && dd.vehicle.id === vehicle.id
+            );
+            if (!d || d.canceled) return;
+
             progressVehicle(vehicle, pos);
           },
           onDone: () => {
+            const d = mission.dispatched.find(
+              (dd) => dd.vehicle && dd.vehicle.id === vehicle.id
+            );
+            if (!d || d.canceled) return;
+
             setVehicleStatus(vehicle, "al", { mission, building });
             vehicle.missionsCount = (vehicle.missionsCount || 0) + 1;
             checkMissionArrival(mission);
@@ -1270,9 +1280,19 @@ function dispatchMission(missionId) {
           marker: vehicle.marker,
           onProgress: ({ pos }) => {
             if (!pos) return;
+            const d = mission.dispatched.find(
+              (dd) => dd.vehicle && dd.vehicle.id === vehicle.id
+            );
+            if (!d || d.canceled) return;
+
             progressVehicle(vehicle, pos);
           },
           onDone: () => {
+            const d = mission.dispatched.find(
+              (dd) => dd.vehicle && dd.vehicle.id === vehicle.id
+            );
+            if (!d || d.canceled) return;
+
             setVehicleStatus(vehicle, "al", { mission, building });
             vehicle.missionsCount = (vehicle.missionsCount || 0) + 1;
             checkMissionArrival(mission);
@@ -1436,9 +1456,19 @@ function dispatchVehicleToMission(vehicle, mission, building) {
       marker: vehicle.marker,
       onProgress: ({ pos }) => {
         if (!pos) return;
+        const d = mission.dispatched.find(
+          (dd) => dd.vehicle && dd.vehicle.id === vehicle.id
+        );
+        if (!d || d.canceled) return;
+
         progressVehicle(vehicle, pos);
       },
       onDone: () => {
+        const d = mission.dispatched.find(
+          (dd) => dd.vehicle && dd.vehicle.id === vehicle.id
+        );
+        if (!d || d.canceled) return;
+
         vehicle.missionsCount = (vehicle.missionsCount || 0) + 1;
         setVehicleStatus(vehicle, "al", { mission, building });
         checkMissionArrival(mission);
