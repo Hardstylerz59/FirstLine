@@ -606,11 +606,31 @@
     </div>
 
     <!-- ========== SCRIPTS ========== -->
+    <script>
+      // ⚑ Doit être chargé AVANT tout le reste
+      window.__HAS_RUNTIME_ERROR = false;
+
+      window.addEventListener(
+        "error",
+        function (e) {
+          window.__HAS_RUNTIME_ERROR = true;
+          console.log("[Error detector] error capturé:", e?.message);
+        },
+        true // useCapture => on capte même si d'autres handlers existent
+      );
+
+      window.addEventListener("unhandledrejection", function (e) {
+        window.__HAS_RUNTIME_ERROR = true;
+        console.log("[Error detector] rejection capturée:", e?.reason);
+      });
+    </script>
+
     <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.min.js"></script>
 
     <!-- Modules internes -->
 
+    <script src="stateRestore.js"></script>
     <script src="save.js"></script>
     <script src="utils.js" defer></script>
     <script src="map.js" defer></script>

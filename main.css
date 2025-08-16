@@ -10,6 +10,7 @@
   --overlay: rgba(0, 0, 0, 0.5);
   --shadow-sm: rgba(0, 0, 0, 0.1);
   --shadow-md: rgba(0, 0, 0, 0.25);
+  --shadow-lg: rgba(0, 0, 0, 0.2);
 
   /* Topbar */
   --topbar-bg: #1e1e2f;
@@ -28,6 +29,8 @@
   /* Danger + Warning (mêmes couleurs qu’actuelles, un seul hover chacun) */
   --danger: #e74c3c;
   --danger-hover: #c0392b;
+  --danger-strong: #b91c1c;
+  --danger-light: #ef4444;
   --warning: #e67e22;
   --warning-hover: #d35400;
 
@@ -159,13 +162,13 @@ body {
   top: 50%;
   transform: translateY(-50%);
   background: var(--accent);
-  color: white;
+  color: var(--btn-text);
   padding: 5px 1px;
   border: none;
   border-radius: 0 4px 4px 0;
   z-index: 2000;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 6px var(--shadow-lg);
   font-size: 18px;
 }
 
@@ -215,7 +218,7 @@ body {
 #reopen-buildings-btn {
   cursor: pointer;
   background-color: var(--accent);
-  color: white;
+  color: var(--btn-text);
   border: none;
   border-radius: 0 4px 4px 0;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
@@ -270,7 +273,7 @@ body {
   flex-shrink: 0;
   overflow-y: auto;
   background: #212529;
-  color: white;
+  color: var(--btn-text);
   padding: 5px;
 }
 
@@ -336,7 +339,7 @@ body {
   background: var(--ui-bg);
   border-radius: 12px;
   padding: 18px 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* 💪 Ombre plus forte */
+  box-shadow: 0 4px 12px var(--shadow-sm); /* 💪 Ombre plus forte */
   transition: transform 0.18s, box-shadow 0.18s;
   display: flex;
   flex-direction: column;
@@ -346,14 +349,14 @@ body {
 
 .building-block:hover {
   transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2); /* ombre au survol */
+  box-shadow: 0 6px 18px var(--shadow-lg); /* ombre au survol */
 }
 
 /* 🔴 Pompiers */
 .building-block.cpi,
 .building-block.cs,
 .building-block.csp {
-  border-left-color: #e74c3c;
+  border-left-color: var(--danger);
 }
 
 /* 🔵 Police */
@@ -389,7 +392,7 @@ body {
   border-radius: 4px;
   font-size: 0.75rem;
   font-weight: bold;
-  color: white;
+  color: var(--btn-text);
 }
 .status.dc {
   background-color: var(--stat-dc);
@@ -447,10 +450,10 @@ body {
 
 /* Couleur par état */
 #mission-list li.non-lancee {
-  border-left: 6px solid #e74c3c; /* rouge - appel en attente */
+  border-left: 6px solid var(--danger); /* rouge - appel en attente */
 }
 #mission-list li.attente {
-  border-left: 6px solid #e67e22; /* orange - véhicule manquant */
+  border-left: 6px solid var(--warning); /* orange - véhicule manquant */
 }
 #mission-list li.transit {
   border-left: 6px solid #f1c40f; /* jaune - en transit */
@@ -480,7 +483,7 @@ body {
 #mission-list li button {
   padding: 8px 12px;
   background-color: var(--accent);
-  color: white;
+  color: var(--btn-text);
   border: none;
   cursor: pointer;
   border-radius: 5px;
@@ -606,21 +609,21 @@ button:active {
 
 /* Variantes */
 button.danger {
-  background: var(--btn-danger-bg);
+  background: var(--danger-bg);
   border-color: transparent;
   color: var(--topbar-fg);
 }
 button.danger:hover {
-  background: var(--btn-danger-hover);
+  background: var(--danger-hover);
 }
 
 button.warning {
-  background: var(--btn-warning-bg);
+  background: var(--warning-bg);
   border-color: transparent;
   color: var(--topbar-fg);
 }
 button.warning:hover {
-  background: var(--btn-warning-hover);
+  background: var(--warning-hover);
 }
 
 button.secondary {
@@ -732,8 +735,8 @@ body.modal-open {
 #btn-service-police {
   padding: 6px 12px;
   border-radius: 6px;
-  border: 1px solid #194da1;
-  background: #10346d;
+  border: 1px solid var(--btn-hover-bg);
+  background: var(--btn-bg);
 }
 #btn-service-pompiers.active,
 #btn-service-police.active {
@@ -802,7 +805,7 @@ body.modal-open {
 }
 .vehicle-delete-list button {
   background-color: var(--danger);
-  color: white;
+  color: var(--btn-text);
   padding: 4px 8px;
   border-radius: 4px;
 }
@@ -816,7 +819,7 @@ body.modal-open {
   left: 50%;
   transform: translateX(-50%) translateY(-20px);
   background: var(--accent);
-  color: white;
+  color: var(--btn-text);
   padding: 14px 24px;
   border-radius: 8px;
   font-weight: bold;
@@ -928,7 +931,7 @@ body.modal-open {
 }
 
 .timer-er {
-  color: #007bff;
+  color: var(--accent);
   font-weight: bold;
   margin-left: 8px;
 }
@@ -953,7 +956,7 @@ body.modal-open {
   font-weight: bold;
   padding: 2px 4px;
   border-radius: 4px;
-  color: white;
+  color: var(--btn-text);
   text-align: center;
   white-space: nowrap;
   min-width: 28px;
@@ -1013,7 +1016,7 @@ body.modal-open {
 
 .vehicle-entry .btn-cancel {
   background: var(--danger);
-  color: white;
+  color: var(--btn-text);
   border: none;
   padding: 4px 8px;
   border-radius: 4px;
@@ -1052,7 +1055,7 @@ body.modal-open {
   background: var(--ui-bg);
   padding: 12px 20px;
   border-radius: 10px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 12px var(--shadow-lg);
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -1081,7 +1084,7 @@ body.modal-open {
 }
 
 .patient-list .critical {
-  border-left-color: #e74c3c;
+  border-left-color: var(--danger);
 }
 .patient-list .moderate {
   border-left-color: #f1c40f;
@@ -1103,7 +1106,7 @@ body.modal-open {
   border-radius: 6px;
   border: none;
   background-color: #3498db;
-  color: white;
+  color: var(--btn-text);
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
@@ -1191,7 +1194,7 @@ body.modal-open {
   font-size: 1rem;
   cursor: pointer;
   transition: background-color 0.3s ease;
-  color: white;
+  color: var(--btn-text);
 }
 
 .auth-container button:hover {
@@ -1269,7 +1272,7 @@ body.modal-open {
   height: 54px;
   border-radius: 50%;
   background: #27ae60;
-  color: white;
+  color: var(--btn-text);
   font-size: 2.2rem; /* 2.2 ou 2.4 rem selon la police */
   box-shadow: 0 4px 18px rgba(44, 62, 80, 0.15);
   border: none;
@@ -1491,7 +1494,7 @@ body.modal-open {
   border-radius: 8px;
   font-weight: 500;
   background: var(--accent); /* La couleur d’origine, ajuste si besoin */
-  color: white;
+  color: var(--btn-text);
   border: none;
   transition: background 0.2s;
   cursor: pointer;
@@ -1514,7 +1517,7 @@ body.modal-open {
 }
 
 .building-header.no-staff-full {
-  color: red;
+  color: var(--stat-er);
   font-weight: bold;
 }
 .vehicle-select-row.vehicle-disabled {
@@ -1560,7 +1563,7 @@ body.modal-open {
 
 .modal-statistics .tab-switch button.active {
   background-color: #3498db;
-  color: white;
+  color: var(--btn-text);
 }
 
 .modal-statistics .stats-table {
@@ -1645,7 +1648,7 @@ th.sorted {
   bottom: 0;
   right: 0;
   background-color: limegreen; /* active */
-  border: 1px solid white;
+  border: 1px solid var(--btn-text);
 }
 
 #mission-toggle.paused::after {
@@ -1679,7 +1682,7 @@ th.sorted {
 .mission-timer {
   margin-left: 10px;
   font-size: 0.9em;
-  color: #000000;
+  color: var(--btn-border);
 }
 
 .mission-status {
@@ -1736,7 +1739,7 @@ th.sorted {
 
 .bonus-chip {
   background-color: #ff5722;
-  color: white;
+  color: var(--btn-text);
   font-size: 0.75em;
   padding: 2px 6px;
   border-radius: 8px;
@@ -1750,7 +1753,7 @@ th.sorted {
 }
 
 .building-group.fire {
-  border-left: 4px solid #e74c3c;
+  border-left: 4px solid var(--danger);
   padding-left: 6px;
 }
 
@@ -1932,11 +1935,11 @@ th.sorted {
 @keyframes blink-red {
   0%,
   100% {
-    background: #b91c1c;
+    background: var(--danger-strong);
     color: var(--topbar-fg);
   }
   50% {
-    background: #ef4444;
+    background: var(--danger-light);
     color: var(--topbar-fg);
   }
 }
@@ -2000,7 +2003,7 @@ th.sorted {
   border-radius: 4px;
   font-size: 12px;
   line-height: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--shadow-sm);
 }
 
 /* mini-carte un peu plus haute */
@@ -2056,7 +2059,7 @@ th.sorted {
 #buildings-list .building-item.dragging {
   opacity: 0.6;
   cursor: grabbing;
-  outline: 2px dashed rgba(0, 0, 0, 0.2);
+  outline: 2px dashed var(--shadow-lg);
   outline-offset: 4px;
 }
 
