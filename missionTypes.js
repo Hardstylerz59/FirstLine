@@ -308,7 +308,7 @@ const MISSION_TYPES = {
           cycle: "",
           meteo: [],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -318,7 +318,7 @@ const MISSION_TYPES = {
           cycle: "",
           meteo: ["pluie", "neige"],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -328,7 +328,7 @@ const MISSION_TYPES = {
           cycle: "jour",
           meteo: [],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -338,7 +338,7 @@ const MISSION_TYPES = {
           cycle: "",
           meteo: [],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -348,7 +348,7 @@ const MISSION_TYPES = {
           cycle: "",
           meteo: [],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -358,7 +358,7 @@ const MISSION_TYPES = {
           cycle: "jour",
           meteo: [],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -368,7 +368,7 @@ const MISSION_TYPES = {
           cycle: "",
           meteo: [],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -378,7 +378,57 @@ const MISSION_TYPES = {
           cycle: "",
           meteo: [],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un homme a glissé sur une plaque de verglas devant son immeuble, il s’est cogné la tête et reste au sol.",
+          label: "Chute",
+          poiTags: ["highway", "footway", "residential"],
+          cycle: "jour",
+          meteo: ["neige"],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un ouvrier est tombé de son escabeau en peignant une façade, il se plaint du dos et ne veut plus bouger.",
+          label: "Chute",
+          poiTags: ["building", "residential", "construction"],
+          cycle: "jour",
+          meteo: ["soleil", "nuageux"],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Une personne âgée a trébuché en sortant d’un commerce, elle est consciente mais a une plaie au bras.",
+          label: "Chute",
+          poiTags: ["shop", "commercial", "highway", "footway"],
+          cycle: "jour",
+          meteo: ["pluie"],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un adolescent a chuté en skateboard sur la place, il s’est ouvert la lèvre et saigne beaucoup.",
+          label: "Chute",
+          poiTags: ["place", "leisure", "park"],
+          cycle: "jour",
+          meteo: ["soleil", "nuageux"],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Une femme enceinte a glissé dans un escalier de parking souterrain, elle se plaint du ventre et ne peut pas se relever.",
+          label: "Chute",
+          poiTags: ["building", "parking", "steps"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
       ],
     },
@@ -393,7 +443,7 @@ const MISSION_TYPES = {
           cycle: "",
           meteo: [],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -403,7 +453,7 @@ const MISSION_TYPES = {
           cycle: "jour",
           meteo: [],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -413,7 +463,7 @@ const MISSION_TYPES = {
           cycle: "",
           meteo: [],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -423,7 +473,7 @@ const MISSION_TYPES = {
           cycle: "jour",
           meteo: [],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -433,7 +483,47 @@ const MISSION_TYPES = {
           cycle: "jour",
           meteo: [], // CORRECTION : pas de météo ici
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un homme de 70 ans est retrouvé assis sur un banc, il respire très difficilement et paraît confus.",
+          label: "Détresse respiratoire",
+          poiTags: ["amenity", "bench", "park"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un enfant tousse violemment à la cantine et semble s’étouffer avec un aliment.",
+          label: "Détresse respiratoire",
+          poiTags: ["amenity", "school", "restaurant"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un homme a inhalé beaucoup de fumée dans son garage en bricolant, il est très essoufflé.",
+          label: "Détresse respiratoire",
+          poiTags: ["building", "residential", "garage"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Une femme enceinte dit qu’elle n’arrive plus à respirer correctement dans le centre commercial.",
+          label: "Détresse respiratoire",
+          poiTags: ["shop", "commercial"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
       ],
     },
@@ -448,7 +538,7 @@ const MISSION_TYPES = {
           cycle: "",
           meteo: ["soleil", "pluie"],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -458,7 +548,7 @@ const MISSION_TYPES = {
           cycle: "",
           meteo: ["soleil"],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -468,7 +558,7 @@ const MISSION_TYPES = {
           cycle: "jour",
           meteo: [],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -478,7 +568,7 @@ const MISSION_TYPES = {
           cycle: "jour",
           meteo: [],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -488,7 +578,297 @@ const MISSION_TYPES = {
           cycle: "jour",
           meteo: [],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un adolescent est pris de vertiges pendant un entraînement sportif, il est allongé au sol et dit qu’il voit flou.",
+          label: "Malaise",
+          poiTags: ["leisure", "sports_centre", "stadium"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un homme s’est effondré à l’arrêt de bus, il respire mais reste très faible.",
+          label: "Malaise",
+          poiTags: ["highway", "bus_stop", "bench"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Une femme enceinte se sent mal dans le métro, elle dit avoir des vertiges et a besoin d’aide.",
+          label: "Malaise",
+          poiTags: ["railway", "subway", "station"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un cycliste est descendu de vélo et s’est assis sur le trottoir, il dit qu’il se sent faible et a des nausées.",
+          label: "Malaise",
+          poiTags: ["highway", "cycleway", "footway"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un client d’un cinéma fait un malaise en salle, il est conscient mais très pâle.",
+          label: "Malaise",
+          poiTags: ["amenity", "cinema"],
+          cycle: "nuit",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+      ],
+    },
+    {
+      type: "blesse_divers",
+      variants: [
+        {
+          dialogue:
+            "Un enfant s’est ouvert le front en jouant, il saigne beaucoup mais reste conscient.",
+          label: "Blessé",
+          poiTags: ["leisure", "playground", "park"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un ouvrier s’est blessé à la main avec un outil, la plaie est profonde et saigne fortement.",
+          label: "Blessé",
+          poiTags: ["construction", "workplace", "industrial"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Une femme s’est coupée profondément en cuisinant, le saignement est difficile à arrêter.",
+          label: "Blessé",
+          poiTags: ["building", "residential", "kitchen"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un cycliste est tombé sur la chaussée, il a une plaie ouverte au genou et des éraflures.",
+          label: "Blessé",
+          poiTags: ["highway", "cycleway", "residential"],
+          cycle: "jour",
+          meteo: ["soleil", "pluie"],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un adolescent s’est blessé en brisant une vitre, il a plusieurs coupures aux bras.",
+          label: "Blessé",
+          poiTags: ["amenity", "school", "building"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 2 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un homme a glissé sur un sol mouillé dans le supermarché, il s’est ouvert la tête en tombant.",
+          label: "Blessé",
+          poiTags: ["shop", "supermarket"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un randonneur s’est tordu la cheville en forêt, il ne peut plus marcher.",
+          label: "Blessé",
+          poiTags: ["natural", "forest", "path"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un spectateur est tombé dans les gradins du stade, il saigne du cuir chevelu.",
+          label: "Blessé",
+          poiTags: ["leisure", "stadium", "sports_centre"],
+          cycle: "nuit",
+          meteo: [],
+          victimCount: { min: 1, max: 2 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Une personne âgée s’est coincé la main dans une porte d’ascenseur, la douleur est intense.",
+          label: "Blessé",
+          poiTags: ["building", "residential", "lift"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un employé s’est renversé de l’eau bouillante sur le bras dans une cuisine de restaurant.",
+          label: "Blessé",
+          poiTags: ["amenity", "restaurant", "kitchen"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+      ],
+    },
+    {
+      type: "blesse_par_arme",
+      variants: [
+        {
+          dialogue:
+            "Un homme a été poignardé à la cuisse lors d’une bagarre devant un bar.",
+          label: "Blessé par arme blanche",
+          poiTags: ["amenity", "bar", "pub"],
+          cycle: "nuit",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [
+            { type: "VSAV", nombre: 1 },
+            { type: "PATROUILLE", nombre: 1 },
+          ],
+        },
+        {
+          dialogue:
+            "Une rixe a éclaté dans un parc, une personne présente une blessure par arme blanche.",
+          label: "Blessé par arme blanche",
+          poiTags: ["leisure", "park", "place"],
+          cycle: "nuit",
+          meteo: [],
+          victimCount: { min: 1, max: 2 },
+          vehicles: [
+            { type: "VSAV", nombre: 1 },
+            { type: "PATROUILLE", nombre: 1 },
+          ],
+        },
+        {
+          dialogue:
+            "Un individu a été blessé par balle dans une ruelle, il est au sol et conscient.",
+          label: "Blessé par arme à feu",
+          poiTags: ["highway", "residential", "footway"],
+          cycle: "nuit",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [
+            { type: "VSAV", nombre: 1 },
+            { type: "PATROUILLE", nombre: 2 },
+          ],
+        },
+        {
+          dialogue:
+            "Une altercation devant une discothèque a fait un blessé par arme à feu.",
+          label: "Blessé par arme à feu",
+          poiTags: ["amenity", "nightclub"],
+          cycle: "nuit",
+          meteo: [],
+          victimCount: { min: 1, max: 2 },
+          vehicles: [
+            { type: "VSAV", nombre: 1 },
+            { type: "PATROUILLE", nombre: 2 },
+          ],
+        },
+        {
+          dialogue:
+            "Un jeune homme a été agressé avec un couteau à la sortie du lycée.",
+          label: "Blessé par arme blanche",
+          poiTags: ["amenity", "school"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [
+            { type: "VSAV", nombre: 1 },
+            { type: "PATROUILLE", nombre: 1 },
+          ],
+        },
+        {
+          dialogue:
+            "Un client d’un supermarché a été blessé par balle lors d’un braquage.",
+          label: "Blessé par arme à feu",
+          poiTags: ["shop", "supermarket"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 2 },
+          vehicles: [
+            { type: "VSAV", nombre: 1 },
+            { type: "PATROUILLE", nombre: 2 },
+          ],
+        },
+        {
+          dialogue:
+            "Un homme est retrouvé blessé par arme blanche dans le hall d’un immeuble.",
+          label: "Blessé par arme blanche",
+          poiTags: ["building", "residential"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [
+            { type: "VSAV", nombre: 1 },
+            { type: "PATROUILLE", nombre: 1 },
+          ],
+        },
+        {
+          dialogue:
+            "Des coups de feu ont été signalés, une personne est blessée au bras.",
+          label: "Blessé par arme à feu",
+          poiTags: ["highway", "street", "place"],
+          cycle: "nuit",
+          meteo: [],
+          victimCount: { min: 1, max: 3 },
+          vehicles: [
+            { type: "VSAV", nombre: 1 },
+            { type: "PATROUILLE", nombre: 2 },
+          ],
+        },
+        {
+          dialogue:
+            "Un passant s’est interposé dans une altercation et a reçu un coup de couteau.",
+          label: "Blessé par arme blanche",
+          poiTags: ["place", "highway", "residential"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [
+            { type: "VSAV", nombre: 1 },
+            { type: "PATROUILLE", nombre: 1 },
+          ],
+        },
+        {
+          dialogue:
+            "Un blessé par balle est signalé sur un parking de centre commercial.",
+          label: "Blessé par arme à feu",
+          poiTags: ["amenity", "parking", "shop"],
+          cycle: "soir",
+          meteo: [],
+          victimCount: { min: 1, max: 2 },
+          vehicles: [
+            { type: "VSAV", nombre: 1 },
+            { type: "PATROUILLE", nombre: 2 },
+          ],
         },
       ],
     },
@@ -504,7 +884,7 @@ const MISSION_TYPES = {
           cycle: "",
           meteo: [],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -514,7 +894,7 @@ const MISSION_TYPES = {
           cycle: "jour",
           meteo: [],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -524,7 +904,7 @@ const MISSION_TYPES = {
           cycle: "jour",
           meteo: [],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -532,9 +912,9 @@ const MISSION_TYPES = {
           label: "Détresse neurologique",
           poiTags: ["highway", "footway", "place"],
           cycle: "",
-          meteo: ["soleil", "brouillard"], // conditions pouvant aggraver désorientation
+          meteo: [], // conditions pouvant aggraver désorientation
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
         {
           dialogue:
@@ -544,7 +924,162 @@ const MISSION_TYPES = {
           cycle: "",
           meteo: [],
           victimCount: { min: 1, max: 1 },
-          vehicles: [{ type: "VSAV" }],
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Une personne âgée est tombée dans la rue, elle parle de manière incohérente et son visage est paralysé d’un côté.",
+          label: "Détresse neurologique",
+          poiTags: ["highway", "footway", "residential"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un homme s’est effondré dans le métro, il convulse et les passants paniquent.",
+          label: "Détresse neurologique",
+          poiTags: ["railway", "subway", "station"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un étudiant s’est mis à trembler brusquement dans la bibliothèque universitaire, il ne répond plus aux questions.",
+          label: "Détresse neurologique",
+          poiTags: ["amenity", "library", "university"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un ouvrier est retrouvé inconscient sur un chantier après avoir eu un comportement confus.",
+          label: "Détresse neurologique",
+          poiTags: ["construction", "industrial", "workplace"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Une cliente dans un supermarché s’est effondrée brutalement, elle convulse près des caisses.",
+          label: "Détresse neurologique",
+          poiTags: ["shop", "supermarket"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+      ],
+    },
+    {
+      type: "douleur_thoracique",
+      variants: [
+        {
+          dialogue:
+            "Mon mari dit qu’il a une forte douleur dans la poitrine et qu’il transpire abondamment.",
+          label: "Douleur thoracique",
+          poiTags: ["building", "residential"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un homme s’est assis brutalement sur un banc en tenant sa poitrine, il dit qu’il a mal au cœur.",
+          label: "Douleur thoracique",
+          poiTags: ["amenity", "bench", "place"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un client d’un restaurant se plaint d’une douleur violente à la poitrine, il est très pâle.",
+          label: "Douleur thoracique",
+          poiTags: ["amenity", "restaurant", "cafe"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un chauffeur de bus a arrêté son véhicule et dit qu’il a mal au thorax.",
+          label: "Douleur thoracique",
+          poiTags: ["highway", "bus_stop", "amenity"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un joggeur s’est arrêté en plein effort, il dit avoir une douleur très vive au niveau du cœur.",
+          label: "Douleur thoracique",
+          poiTags: ["leisure", "park", "sports_centre"],
+          cycle: "jour",
+          meteo: ["soleil"],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Une femme enceinte se plaint d’une oppression dans la poitrine dans le centre commercial.",
+          label: "Douleur thoracique",
+          poiTags: ["shop", "commercial"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un homme âgé a des douleurs thoraciques dans la rue, il s’est allongé au sol.",
+          label: "Douleur thoracique",
+          poiTags: ["highway", "footway", "residential"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un employé de bureau se tient la poitrine et dit qu’il a du mal à respirer.",
+          label: "Douleur thoracique",
+          poiTags: ["office", "building", "workplace"],
+          cycle: "jour",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un spectateur au cinéma s’est effondré, il avait mal au thorax avant de perdre connaissance.",
+          label: "Douleur thoracique",
+          poiTags: ["amenity", "cinema"],
+          cycle: "nuit",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
+        },
+        {
+          dialogue:
+            "Un conducteur sur l’autoroute a arrêté sa voiture sur la bande d’arrêt d’urgence, il dit avoir une douleur dans la poitrine.",
+          label: "Douleur thoracique",
+          poiTags: ["highway", "motorway"],
+          cycle: "",
+          meteo: [],
+          victimCount: { min: 1, max: 1 },
+          vehicles: [{ type: "VSAV", nombre: 1 }],
         },
       ],
     },
