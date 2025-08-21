@@ -98,22 +98,20 @@ async function rebuildBuildingsAndVehicles(
   const vehicleById = {};
   const buildingById = {};
 
-  // 🏢 Restauration des bâtiments
-  for (const b of state.buildings) {
-    createBuildingFromState(b);
-    await preloadAllPOIs();
-    const building = buildings.find(
-      (x) => x.name === b.name && x.type === b.type
-    );
+  // Index rapide des bâtiments "état" par id pour les recherches (ex: hospitalTargetId)
+  const rawBuildingById = Object.fromEntries(
+    (state.buildings || []).map((b) => [b.id, b])
+  );
+
+  for (const b of state.buildings || []) {
+    // 1) Création DOM + marker via ta factory (retourne l'objet)
+    const building = createBuildingFromState(b);
     if (!building) continue;
 
+    // 2) Injecte l'id d'origine et le personnel
     building.id = b.id;
 
-    if (
-      building.type === "cpi" ||
-      building.type === "cs" ||
-      building.type === "csp"
-    ) {
+    if (["cpi", "cs", "csp"].includes(building.type)) {
       building.personnelPro = b.personnelPro ?? 0;
       building.personnelVol = b.personnelVol ?? 0;
       building.personnelAvailablePro =
@@ -125,16 +123,17 @@ async function rebuildBuildingsAndVehicles(
       building.personnelAvailable = b.personnelAvailable ?? b.personnel ?? 0;
     }
 
-    building.vehicles = [];
     building.capacity = b.capacity || 10;
     building.patients = b.patients || [];
     building.reservedPatients = b.reservedPatients || [];
 
+    // 3) Sidebar véhicules : clear et rebuild
     const safeId = getSafeId(building);
     const vehList = document.getElementById(`veh-${safeId}`);
     if (vehList) vehList.innerHTML = "";
+    building.vehicles = [];
 
-    for (const v of b.vehicles) {
+    for (const v of b.vehicles || []) {
       const vehicle = {
         id: v.id,
         type: v.type,
@@ -145,9 +144,11 @@ async function rebuildBuildingsAndVehicles(
         usure: typeof v.usure === "number" ? v.usure : 0,
         missionsCount: v.missionsCount || 0,
         ready: v.ready ?? true,
-        retourEnCours: "retourEnCours" in v ? v.retourEnCours : false,
+        retourEnCours: !!v.retourEnCours,
+        capacityEau: v.capacityEau ?? null,
       };
 
+      // Marker véhicule si position connue et pas "dc"
       if (v.position && v.status !== "dc") {
         const icon = L.icon({
           iconUrl: `assets/icons/${v.type.toLowerCase()}.png`,
@@ -163,25 +164,23 @@ async function rebuildBuildingsAndVehicles(
         vehicle.lastKnownPosition = v.position;
 
         if (v.hospitalTargetId) {
-          const targetHospital = buildings.find(
-            (h) => h.id === v.hospitalTargetId
-          );
-          if (targetHospital) {
-            vehicle.hospitalTarget = targetHospital;
+          const targetRaw = rawBuildingById[v.hospitalTargetId];
+          if (targetRaw) {
+            // On pointera vers l'objet reconstruit après indexation globale
+            vehicle._hospitalTargetRawId = v.hospitalTargetId;
           }
         }
       }
 
+      // DOM ligne véhicule
       const li = document.createElement("li");
       li.classList.add("vehicle-item");
       li.innerHTML = `
         <span>${vehicle.label}</span>
-        <span
-          class="status ${v.status}"
-          data-vehicle-id="${v.id}"
-          title="${v.status.toUpperCase()}"
-        >
-          ${v.status.toUpperCase()}
+        <span class="status ${v.status}" data-vehicle-id="${v.id}" title="${
+        v.status?.toUpperCase?.() || ""
+      }">
+          ${v.status?.toUpperCase?.() || ""}
         </span>
       `;
       vehList?.appendChild(li);
@@ -191,31 +190,36 @@ async function rebuildBuildingsAndVehicles(
       vehicleById[vehicle.id] = vehicle;
     }
 
-    if (
-      building.type === "cpi" ||
-      building.type === "cs" ||
-      building.type === "csp"
-    ) {
-      const spanProTotal = document.getElementById(`staff-pro-${safeId}`);
-      const spanProAvail = document.getElementById(`staff-pro-avail-${safeId}`);
-      if (spanProTotal) spanProTotal.textContent = building.personnelPro ?? 0;
-      if (spanProAvail)
-        spanProAvail.textContent = building.personnelAvailablePro ?? 0;
+    // 4) Indexation par safeId (pour dispatched) ET par id (fallback)
+    buildingById[safeId] = building;
+    if (building.id) buildingById[building.id] = building;
 
-      const spanVolTotal = document.getElementById(`staff-vol-${safeId}`);
-      const spanVolAvail = document.getElementById(`staff-vol-avail-${safeId}`);
-      if (spanVolTotal) spanVolTotal.textContent = building.personnelVol ?? 0;
-      if (spanVolAvail)
-        spanVolAvail.textContent = building.personnelAvailableVol ?? 0;
-    } else {
-      const spanTotal = document.getElementById(`staff-${safeId}`);
-      const spanAvail = document.getElementById(`staff-avail-${safeId}`);
-      if (spanTotal) spanTotal.textContent = building.personnel ?? 0;
-      if (spanAvail) spanAvail.textContent = building.personnelAvailable ?? 0;
-    }
-
-    buildingById[getSafeId(building)] = building;
     refreshBuildingStatus(building);
+
+    // 5) POI : lit BDD → si vide, remplit depuis Overpass puis upsert
+    try {
+      if (typeof getOrFetchPOIsForBuilding === "function") {
+        await getOrFetchPOIsForBuilding(building);
+      }
+      if (typeof refillPOIsForBuildingIfEmpty === "function") {
+        await refillPOIsForBuildingIfEmpty(building);
+      }
+    } catch (e) {
+      console.warn(
+        `[POI] Erreur lors du chargement POI pour ${building.id || safeId}`,
+        e
+      );
+    }
+  }
+
+  // 6) Finalise les hospitalTarget des véhicules (maintenant que tous les bâtiments sont indexés)
+  for (const b of buildings) {
+    for (const v of b.vehicles) {
+      if (v._hospitalTargetRawId && buildingById[v._hospitalTargetRawId]) {
+        v.hospitalTarget = buildingById[v._hospitalTargetRawId];
+        delete v._hospitalTargetRawId;
+      }
+    }
   }
 
   return { vehicleById, buildingById };
@@ -231,17 +235,17 @@ function setCallStats(state) {
 
 /** 8) NEXT_CALL_ID */
 function computeNextCallId(state) {
-  if (typeof state.nextCallId === "number") {
+  if (typeof state.nextCallId === "number" && state.nextCallId > 0) {
     window.NEXT_CALL_ID = state.nextCallId;
-  } else {
-    const maxId = Math.max(
-      -1,
-      ...(state.missions || [])
-        .map((m) => parseInt(m.id, 10))
-        .filter((n) => Number.isFinite(n))
-    );
-    window.NEXT_CALL_ID = maxId + 1;
+    return;
   }
+  const maxId = Math.max(
+    -1,
+    ...(state.missions || [])
+      .map((m) => parseInt(m.id, 10))
+      .filter((n) => Number.isFinite(n))
+  );
+  window.NEXT_CALL_ID = maxId + 1;
 }
 
 /** 9) Missions + DOM + marqueurs + reprise de progression */
@@ -253,8 +257,7 @@ function restoreMissions(
   vehicleById,
   buildingById
 ) {
-  // 🚨 Restauration des missions
-  for (const ms of state.missions) {
+  for (const ms of state.missions || []) {
     const li = document.createElement("li");
     li.innerHTML = `
       <h3>${ms.label}</h3>
@@ -264,7 +267,6 @@ function restoreMissions(
       </p>
       <button onclick="openCallModal('${ms.id}')">Traiter</button>
     `;
-
     missionList.appendChild(li);
 
     const icon = L.icon({
@@ -272,7 +274,6 @@ function restoreMissions(
       iconSize: [28, 28],
       iconAnchor: [14, 28],
     });
-
     const marker = L.marker(ms.position, { icon })
       .addTo(map)
       .bindPopup(ms.label || "📞 Appel");
@@ -290,7 +291,6 @@ function restoreMissions(
       marker,
       observations: ms.observations || "",
       createdAt: ms.createdAt || Date.now(),
-
       domElement: li,
       dialogue: ms.dialogue,
       hasAskedAddress: !!ms.hasAskedAddress,
@@ -313,12 +313,14 @@ function restoreMissions(
 
     if (Array.isArray(ms.dispatched)) {
       for (const d of ms.dispatched) {
-        const vehicle = vehicleById[d.vehicleId];
-        const building = buildingById[d.buildingId];
-        if (vehicle && building) {
+        const veh = vehicleById[d.vehicleId];
+        // d.buildingId est un safeId sauvegardé; on tente safeId puis id brut en fallback
+        const bld =
+          buildingById[d.buildingId] || buildingById[String(d.buildingId)];
+        if (veh && bld) {
           mission.dispatched.push({
-            vehicle,
-            building,
+            vehicle: veh,
+            building: bld,
             canceled: d.canceled || false,
           });
         }
@@ -326,12 +328,15 @@ function restoreMissions(
     }
 
     missions.push(mission);
+
     if (mission.marker && mission.marker.getPopup()) {
       mission.marker.setPopupContent(() =>
         generateMissionPopupContent(mission)
       );
     }
+
     verifyMissionVehicles(mission);
+
     if (mission.progressStarted && mission.startTime && mission.durationMs) {
       resumeMissionProgress(mission);
       const btn = mission.domElement?.querySelector("button");

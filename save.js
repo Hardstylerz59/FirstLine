@@ -93,6 +93,7 @@ function createBuildingFromState(b) {
       building.personnel ?? 0
     }</span>)`;
   }
+  return building; // 👈 AJOUT
 }
 
 // Lecture BDD + mise en cache local. Pas d'appel Overpass ici.
