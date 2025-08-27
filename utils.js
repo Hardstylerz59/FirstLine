@@ -87,20 +87,13 @@ async function getWeatherAt(lat, lon) {
 }
 
 const VEHICLE_SPEED_BY_TYPE = {
-  /**VSAV: 20,
+  VSAV: 20,
   FPT: 23,
   VSR: 22,
   EPA: 23,
   CDG: 18,
   PATROUILLE: 18,
-  SMUR: 18,**/
-  VSAV: 1,
-  FPT: 1,
-  VSR: 1,
-  EPA: 1,
-  CDG: 1,
-  PATROUILLE: 1,
-  SMUR: 1,
+  SMUR: 18,
 };
 
 // Facteur météo -> plus grand = plus lent (ms/m)

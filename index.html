@@ -380,7 +380,59 @@
             ✖
           </button>
 
-          <div id="manage-content"></div>
+          <h2 id="manage-title"></h2>
+
+          <!-- grille 2 colonnes -->
+          <div class="manage-grid">
+            <!-- Colonne gauche : intervention -->
+            <section id="manage-left">
+              <div id="manage-content"></div>
+            </section>
+
+            <!-- Colonne droite : renforts -->
+            <section id="manage-right">
+              <section id="reinforcement-panel" class="reinforcement-panel">
+                <h4>Renforts</h4>
+
+                <div class="reinforcement-controls">
+                  <div class="chip-group">
+                    <button class="filter-btn active" data-filter="ALL">
+                      Tous
+                    </button>
+                    <button class="filter-btn" data-filter="FIRE">
+                      Caserne
+                    </button>
+                    <button class="filter-btn" data-filter="HOSPITAL">
+                      Hôpital
+                    </button>
+                    <button class="filter-btn" data-filter="POLICE">
+                      Commissariat
+                    </button>
+                  </div>
+                  <input
+                    id="reinforcement-search-input"
+                    placeholder="Recherche véhicule"
+                  />
+                  <select id="reinforcement-type-select">
+                    <option value="TOUS">Tous types</option>
+                    <option value="VSAV">VSAV</option>
+                    <option value="FPT">FPT</option>
+                    <option value="VSR">VSR</option>
+                    <option value="SMUR">SMUR</option>
+                    <option value="POLICE">POLICE</option>
+                  </select>
+                </div>
+
+                <div id="reinforcement-list" class="vehicle-list-scroll"></div>
+
+                <div class="actions">
+                  <button id="reinforcement-send-btn" class="primary">
+                    Envoyer renforts
+                  </button>
+                </div>
+              </section>
+            </section>
+          </div>
 
           <div class="right actions">
             <button onclick="closeManageModal()">Fermer</button>
@@ -564,25 +616,6 @@
             </section>
           </div>
           <!-- ====== /LAYOUT ====== -->
-        </div>
-      </div>
-
-      <!-- Modale renforts -->
-      <div id="reinforcement-modal" class="hidden modal-overlay">
-        <div class="modal-content large-modal reinforcement-selection-context">
-          <h3>🚒 Ajouter des renforts</h3>
-          <div id="reinforcement-filter-buttons" class="reinforcement-filters">
-            <button data-filter="ALL" class="filter-btn active">Tous</button>
-            <button data-filter="FIRE" class="filter-btn">Caserne</button>
-            <button data-filter="HOSPITAL" class="filter-btn">Hôpital</button>
-            <button data-filter="POLICE" class="filter-btn">
-              Commissariat
-            </button>
-          </div>
-
-          <div id="reinforcement-vehicles"></div>
-          <button id="send-reinforcements-btn">✅ Envoyer renforts</button>
-          <button onclick="closeReinforcementModal()">Annuler</button>
         </div>
       </div>
 
