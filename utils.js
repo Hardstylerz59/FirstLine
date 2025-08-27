@@ -1164,32 +1164,46 @@ function refreshBuildingStatus(building) {
     building.type === "cs" ||
     building.type === "csp"
   ) {
-    const proTotal = building.personnelPro;
-    const volTotal = building.personnelVol;
-    let proEngaged = 0,
-      volEngaged = 0;
+    const proTotal = parseInt(building.personnelPro || 0, 10);
+    const volTotal = parseInt(building.personnelVol || 0, 10);
+
+    // Dispo = total - somme(personnel requis des véhicules EN INTERVENTION)
+    const engagedStatuses = new Set(["er", "al", "at", "tr", "ch", "ot"]);
+    let proUsed = 0;
+    let volUsed = 0;
+
     building.vehicles.forEach((v) => {
-      const engaged = v._engagedStaff || { pro: 0, vol: 0 }; // À remplir à l'affectation réelle
-      proEngaged += engaged.pro || 0;
-      volEngaged += engaged.vol || 0;
+      if (!v) return;
+      if (!engagedStatuses.has(v.status)) return;
+      const req = parseInt(v.required || v.personnel || 1, 10);
+
+      // Répartition simple : on “prend” les pros en priorité, puis on complète avec des vol
+      const proThis = Math.min(Math.max(proTotal - proUsed, 0), req);
+      const volThis = Math.max(0, req - proThis);
+
+      proUsed += proThis;
+      volUsed += volThis;
     });
-    building.personnelAvailablePro = proTotal - proEngaged;
-    building.personnelAvailableVol = volTotal - volEngaged;
-    document.getElementById(`staff-pro-${safeId}`).textContent = proTotal;
-    document.getElementById(`staff-vol-${safeId}`).textContent = volTotal;
-    document.getElementById(`staff-pro-avail-${safeId}`).textContent =
-      building.personnelAvailablePro;
-    document.getElementById(`staff-vol-avail-${safeId}`).textContent =
-      building.personnelAvailableVol;
+
+    building.personnelAvailablePro = Math.max(0, proTotal - proUsed);
+    building.personnelAvailableVol = Math.max(0, volTotal - volUsed);
+
+    const elPro = document.getElementById(`staff-pro-${safeId}`);
+    const elVol = document.getElementById(`staff-vol-${safeId}`);
+    const elProAvail = document.getElementById(`staff-pro-avail-${safeId}`);
+    const elVolAvail = document.getElementById(`staff-vol-avail-${safeId}`);
+    if (elPro) elPro.textContent = proTotal;
+    if (elVol) elVol.textContent = volTotal;
+    if (elProAvail) elProAvail.textContent = building.personnelAvailablePro;
+    if (elVolAvail) elVolAvail.textContent = building.personnelAvailableVol;
   } else {
     const total = building.personnel;
     let engagedPersonnel = 0;
     building.vehicles.forEach((v) => {
       const isTemp = v._tempEngaged === true;
-      const isActive =
-        ["er", "al", "at"].includes(v.status) ||
-        (v.status === "ot" && !v.ready);
-      if (isTemp || isActive) engagedPersonnel += v.required || 0;
+      const isActive = ["er", "al", "at", "tr", "ch", "ot"].includes(v.status);
+      if (isTemp || isActive)
+        engagedPersonnel += v.required || v.personnel || 1;
     });
 
     const available = total - engagedPersonnel;
@@ -1199,7 +1213,7 @@ function refreshBuildingStatus(building) {
 
     building.vehicles.forEach((v) => {
       if (v.status === "ot" && v.retourEnCours) return;
-      const isEngaged = ["er", "al", "at"].includes(v.status);
+      const isEngaged = ["er", "al", "at", "tr", "ch", "ot"].includes(v.status);
       if (v.ready && !isEngaged && !v.retourEnCours) {
         const enough = available >= (v.required || 0);
         updateVehicleStatus(v, enough ? "dc" : "nd");
@@ -1358,12 +1372,6 @@ function generateMissionPopupContent(mission) {
 
 // --- utils.js ---
 
-// ⚠️ On garde la mécanique setInterval mais on synchronise d'abord la classe
-// "selected-synced" et le type (dc/ot) entre le modal et la sidebar pour un
-// même véhicule, en se basant sur un attribut d'identité (data-vehicle-id / data-id / data-veh-id).
-
-let isBlinkOn = false;
-
 /* Helpers pour relier modal <-> sidebar par ID véhicule */
 function _getVehIdFromStatusEl(el) {
   // essaie d'abord sur l'élément lui-même
@@ -1397,84 +1405,6 @@ function _getAllStatusPeers(vehId) {
        .status[data-veh-id="${id}"],     [data-veh-id="${id}"] .status`
     )
   );
-}
-
-/* Synchronise la classe selected-synced et le type dc/ot entre vues */
-function _syncSelectedAcrossViews() {
-  const selected = document.querySelectorAll(".status.selected-synced");
-  selected.forEach((el) => {
-    const vehId = _getVehIdFromStatusEl(el);
-    if (!vehId) return;
-
-    const isDC = el.classList.contains("dc");
-    const isOT = el.classList.contains("ot");
-
-    _getAllStatusPeers(vehId).forEach((peer) => {
-      // Nettoie les vieux styles inline (ancienne implémentation)
-      if (peer.style && (peer.style.backgroundColor || peer.style.color)) {
-        peer.style.backgroundColor = "";
-        peer.style.color = "";
-      }
-
-      // Assure la propagation de l'état "sélectionné"
-      if (!peer.classList.contains("selected-synced")) {
-        peer.classList.add("selected-synced");
-      }
-
-      // Harmonise le type (dc/ot) sur tous les peers
-      if (isDC) {
-        peer.classList.add("dc");
-        peer.classList.remove("ot");
-      } else if (isOT) {
-        peer.classList.add("ot");
-        peer.classList.remove("dc");
-      }
-    });
-  });
-}
-
-/* Boucle de clignotement conservée (couleurs identiques à ton code) */
-setInterval(() => {
-  // 🔑 Nouveau : avant de clignoter, on synchronise modal <-> sidebar
-  _syncSelectedAcrossViews();
-
-  isBlinkOn = !isBlinkOn;
-
-  document.querySelectorAll(".status.selected-synced").forEach((el) => {
-    if (el.classList.contains("dc")) {
-      // Clignotement pour DC : vert ↔ blanc
-      if (isBlinkOn) {
-        el.style.backgroundColor = "green";
-        el.style.color = "white";
-      } else {
-        el.style.backgroundColor = "white";
-        el.style.color = "green";
-      }
-    } else if (el.classList.contains("ot")) {
-      // Clignotement pour OT : bleu ↔ blanc
-      if (isBlinkOn) {
-        el.style.backgroundColor = "blue";
-        el.style.color = "white";
-      } else {
-        el.style.backgroundColor = "white";
-        el.style.color = "blue";
-      }
-    }
-  });
-}, 700);
-
-// utils.js (ou où est ta fonction)
-function clearSelectedSyncedStatus(scopeSelector = null) {
-  const root = scopeSelector ? document.querySelector(scopeSelector) : document;
-  if (!root) return;
-
-  root
-    .querySelectorAll(".status.selected-synced, .status.is-blinking")
-    .forEach((el) => {
-      el.classList.remove("selected-synced", "is-blinking");
-      el.style.backgroundColor = "";
-      el.style.color = "";
-    });
 }
 
 setInterval(() => {

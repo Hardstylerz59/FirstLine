@@ -463,19 +463,24 @@ function buildVehicleListForCall(
       const proTotal = parseInt(building.personnelPro || 0, 10);
       const volTotal = parseInt(building.personnelVol || 0, 10);
 
+      // Dispo de départ = total - somme(personnel requis des véhicules EN INTERVENTION)
+      const engagedStatuses = new Set(["er", "al", "at", "tr", "ch", "ot"]);
+      let proUsed = 0;
+      let volUsed = 0;
+
+      building.vehicles.forEach((v) => {
+        if (!v) return;
+        if (!engagedStatuses.has(v.status)) return;
+        const req = parseInt(v.required || v.personnel || 1, 10);
+        const proThis = Math.min(Math.max(proTotal - proUsed, 0), req);
+        const volThis = Math.max(0, req - proThis);
+        proUsed += proThis;
+        volUsed += volThis;
+      });
+
       personnelVirtuel[building.id] = {
-        pro: parseInt(
-          typeof building.personnelAvailablePro !== "undefined"
-            ? building.personnelAvailablePro
-            : proTotal,
-          10
-        ),
-        vol: parseInt(
-          typeof building.personnelAvailableVol !== "undefined"
-            ? building.personnelAvailableVol
-            : volTotal,
-          10
-        ),
+        pro: Math.max(0, proTotal - proUsed),
+        vol: Math.max(0, volTotal - volUsed),
       };
 
       personnelTotal = proTotal + volTotal;
@@ -483,13 +488,16 @@ function buildVehicleListForCall(
         personnelVirtuel[building.id].pro + personnelVirtuel[building.id].vol;
     } else {
       const total = parseInt(building.personnel || 0, 10);
+      const engaged = building.vehicles
+        .filter(
+          (v) => v && ["er", "al", "at", "tr", "ch", "ot"].includes(v.status)
+        )
+        .reduce(
+          (sum, v) => sum + parseInt(v.required || v.personnel || 1, 10),
+          0
+        );
 
-      personnelVirtuel[building.id] = parseInt(
-        typeof building.personnelAvailable !== "undefined"
-          ? building.personnelAvailable
-          : total,
-        10
-      );
+      personnelVirtuel[building.id] = Math.max(0, total - engaged);
 
       personnelTotal = total;
       personnelDispo = personnelVirtuel[building.id];
@@ -770,7 +778,6 @@ function closeCallModal() {
   currentCallMission = null;
   document.getElementById("call-modal").classList.add("hidden");
   document.body.classList.remove("modal-open");
-  clearSelectedSyncedStatus();
 }
 
 document.getElementById("reveal-address-btn").addEventListener("click", () => {
