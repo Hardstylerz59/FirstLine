@@ -1380,23 +1380,34 @@ function resumeMissionProgress(mission) {
 
 function dispatchVehicleToMission(vehicle, mission, building) {
   if (!building) {
-    building = buildings.find((b) => b.vehicles.includes(vehicle));
+    building = buildings.find((b) => (b.vehicles || []).includes(vehicle));
   }
-  const start = vehicle.lastKnownPosition;
-  const end = mission.position;
+  const missionPos = normalizeMissionPosition(mission);
+  if (!missionPos) {
+    alert("Position de la mission inconnue (pas de lat/lng).");
+    return;
+  }
+
+  const startLL =
+    getVehicleLatLng?.(vehicle, building) ||
+    toLatLng(
+      vehicle.lastKnownPosition || vehicle.latlng || building?.latlng,
+      missionPos
+    );
+  const endLL = toLatLng(mission.position, startLL);
 
   const icon = L.icon({
-    iconUrl: `assets/icons/${vehicle.type.toLowerCase()}.png`,
+    iconUrl: `assets/icons/${(vehicle.type || "").toLowerCase()}.png`,
     iconSize: [24, 24],
     iconAnchor: [12, 12],
   });
 
   if (!vehicle.marker) {
-    vehicle.marker = L.marker(start, { icon })
+    vehicle.marker = L.marker(startLL, { icon })
       .addTo(map)
       .bindTooltip(vehicle.label, { permanent: false, direction: "top" });
   } else {
-    vehicle.marker.setLatLng(start);
+    vehicle.marker.setLatLng(startLL);
     vehicle.marker.setIcon(icon);
     vehicle.marker.bindTooltip(vehicle.label, {
       permanent: false,
@@ -1404,27 +1415,38 @@ function dispatchVehicleToMission(vehicle, mission, building) {
     });
   }
 
-  fetchRouteCoords(start, end).then((coords) => {
-    if (coords.length < 2) {
-      vehicle.marker.setLatLng(end);
-      setVehicleStatus(vehicle, "al", { mission, building });
+  // ⚙️ crée/assure l'entrée d'engagement et engage le personnel tout de suite
+  ensureDispatchedEntry(mission, vehicle, building);
+  engageStaffForDispatch(vehicle, building);
+
+  fetchRouteCoords(startLL, endLL).then((coords) => {
+    // Si pas d'itinéraire → arrivée immédiate
+    if (!Array.isArray(coords) || coords.length < 2) {
+      vehicle.ready = false;
+      setVehicleStatus?.(vehicle, "al", { mission, building });
       vehicle.missionsCount = (vehicle.missionsCount || 0) + 1;
-      checkMissionArrival(mission);
-      verifyMissionVehicles(mission);
+      vehicle.lastKnownPosition = endLL;
+      vehicle.marker.setLatLng(endLL);
+      checkMissionArrival?.(mission);
+      verifyMissionVehicles?.(mission);
+      notifyMissionsChanged?.();
       return;
     }
 
     const { totalRouteDistance } = RouteMath.computeRouteProfile(coords);
-
-    const { msPerMeter: speedFactor } = setVehicleArrivalFromDistance(
+    const { msPerMeter } = setVehicleArrivalFromDistance(
       vehicle,
       totalRouteDistance
     );
 
-    startVehicleProgress(vehicle, coords[0]);
+    // ✅ passe immédiatement le statut à ER (auparavant manquant)
+    vehicle.ready = false;
+    vehicle.retourEnCours = false;
+    vehicle.arrivalTime = Date.now() + msPerMeter * totalRouteDistance; // garantit le chrono
+    setVehicleStatus?.(vehicle, "er", { mission, building });
 
-    // --- Remplacement RAF → RouteAnimator ---
-    const speedMps = 1000 / speedFactor;
+    startVehicleProgress?.(vehicle, coords[0]);
+    const speedMps = 1000 / msPerMeter;
 
     vehicle.returnAnimation = RouteAnimator.animateAlongRoute({
       coords,
@@ -1432,28 +1454,28 @@ function dispatchVehicleToMission(vehicle, mission, building) {
       marker: vehicle.marker,
       onProgress: ({ pos }) => {
         if (!pos) return;
-        const d = mission.dispatched.find(
+        const d = (mission.dispatched || []).find(
           (dd) => dd.vehicle && dd.vehicle.id === vehicle.id
         );
         if (!d || d.canceled) return;
-
-        progressVehicle(vehicle, pos);
+        progressVehicle?.(vehicle, pos);
       },
       onDone: () => {
-        const d = mission.dispatched.find(
+        const d = (mission.dispatched || []).find(
           (dd) => dd.vehicle && dd.vehicle.id === vehicle.id
         );
         if (!d || d.canceled) return;
 
         vehicle.missionsCount = (vehicle.missionsCount || 0) + 1;
-        setVehicleStatus(vehicle, "al", { mission, building });
-        checkMissionArrival(mission);
-        verifyMissionVehicles(mission);
+        setVehicleStatus?.(vehicle, "al", { mission, building });
+        checkMissionArrival?.(mission);
+        verifyMissionVehicles?.(mission);
+        notifyMissionsChanged?.();
       },
     });
-    // --- Fin remplacement ---
   });
-  notifyMissionsChanged();
+
+  notifyMissionsChanged?.();
 }
 
 function returnVehicleToCaserne(vehicle, building) {

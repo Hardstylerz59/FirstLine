@@ -10,6 +10,174 @@ const PATIENT_STAY_DURATION = {
 const WEATHER_TYPES = ["soleil", "nuageux", "pluie", "orageux", "neige"];
 const DAY_CYCLES = ["jour", "nuit"];
 
+/* === Statuts centralisés === */
+const STATUS = Object.freeze({
+  DC: "dc", // disponible
+  ND: "nd", // non dispo (pas assez de personnel)
+  HS: "hs", // hors service
+  ER: "er", // en route
+  AL: "al", // sur les lieux
+  AT: "at", // attente / délai
+  TR: "tr", // transport
+  CH: "ch", // arrivé hôpital
+  OT: "ot", // retour
+});
+const ENGAGED_STATUSES = new Set([
+  STATUS.ER,
+  STATUS.AL,
+  STATUS.AT,
+  STATUS.TR,
+  STATUS.CH,
+  STATUS.OT,
+]);
+
+/* Helpers globaux */
+window.STATUS = STATUS;
+window.ENGAGED_STATUSES = ENGAGED_STATUSES;
+window.isEngagedStatus = (s) => ENGAGED_STATUSES.has(s);
+
+// Calcule la base "dispo" en tenant compte des véhicules EN INTERVENTION
+function getEngagedBaseForBuilding(building) {
+  if (["cpi", "cs", "csp"].includes(building.type)) {
+    const proTotal = parseInt(building.personnelPro || 0, 10);
+    const volTotal = parseInt(building.personnelVol || 0, 10);
+
+    let proUsed = 0,
+      volUsed = 0;
+    (building.vehicles || []).forEach((v) => {
+      if (!v || !isEngagedStatus(v.status)) return;
+      const req = parseInt(v.required || v.personnel || 1, 10);
+      const proThis = Math.min(Math.max(proTotal - proUsed, 0), req);
+      const volThis = Math.max(0, req - proThis);
+      proUsed += proThis;
+      volUsed += volThis;
+    });
+
+    return {
+      type: "cis",
+      proTotal,
+      volTotal,
+      proAvail: Math.max(0, proTotal - proUsed),
+      volAvail: Math.max(0, volTotal - volUsed),
+    };
+  }
+
+  const total = parseInt(building.personnel || 0, 10);
+  const engaged = (building.vehicles || [])
+    .filter((v) => v && isEngagedStatus(v.status))
+    .reduce((s, v) => s + parseInt(v.required || v.personnel || 1, 10), 0);
+
+  return {
+    type: "other",
+    total,
+    avail: Math.max(0, total - engaged),
+  };
+}
+
+// Met à jour les spans de la sidebar ET le badge "Dispo :" du panneau renforts
+function updateDispoUIForBuilding(
+  building,
+  { proAvail, volAvail, proTotal, volTotal, avail, total }
+) {
+  const safeId = getSafeId(building);
+
+  if (["cpi", "cs", "csp"].includes(building.type)) {
+    const elPro = document.getElementById(`staff-pro-${safeId}`);
+    const elVol = document.getElementById(`staff-vol-${safeId}`);
+    const elProAvail = document.getElementById(`staff-pro-avail-${safeId}`);
+    const elVolAvail = document.getElementById(`staff-vol-avail-${safeId}`);
+    if (elPro) elPro.textContent = proTotal;
+    if (elVol) elVol.textContent = volTotal;
+    if (elProAvail) elProAvail.textContent = Math.max(0, proAvail);
+    if (elVolAvail) elVolAvail.textContent = Math.max(0, volAvail);
+
+    // Renforts (badge "Dispo : x/y")
+    document
+      .querySelectorAll(`.building-dispo[data-dispo-for="${building.id}"]`)
+      .forEach((sp) => {
+        sp.textContent = `${Math.max(0, (proAvail || 0) + (volAvail || 0))}/${
+          (proTotal || 0) + (volTotal || 0)
+        }`;
+      });
+  } else {
+    const elTotal = document.getElementById(`staff-${safeId}`);
+    const elAvail = document.getElementById(`staff-avail-${safeId}`);
+    if (elTotal) elTotal.textContent = total;
+    if (elAvail) elAvail.textContent = Math.max(0, avail);
+
+    document
+      .querySelectorAll(`.building-dispo[data-dispo-for="${building.id}"]`)
+      .forEach((sp) => {
+        sp.textContent = `${Math.max(0, avail || 0)}/${total || 0}`;
+      });
+  }
+}
+
+function findVehicleById(vehId) {
+  for (const b of buildings) {
+    const v = (b.vehicles || []).find((vv) => vv.id === vehId);
+    if (v) return { vehicle: v, building: b };
+  }
+  return null;
+}
+
+// Retourne la sélection actuelle (premier départ + renforts), avec leur bâtiment
+function collectTempSelectedVehicles() {
+  const temp = [];
+  document
+    .querySelectorAll(
+      '#call-modal .vehicle-entry input[type="checkbox"]:checked, \
+     #manage-modal .vehicle-entry input[type="checkbox"]:checked'
+    )
+    .forEach((chk) => {
+      const vehId = chk.dataset.vehicleId;
+      const found = findVehicleById(vehId);
+      if (!found) return;
+      const { vehicle, building } = found;
+      temp.push({
+        vehicle,
+        building,
+        personnel: parseInt(vehicle.required || vehicle.personnel || 1, 10),
+      });
+    });
+  return temp;
+}
+
+// Applique la simulation aux bâtiments concernés par la sélection courante
+window._buildingsSimulated = window._buildingsSimulated || new Set();
+function updatePersonnelSimulation() {
+  const temp = collectTempSelectedVehicles();
+  const impacted = new Set(temp.map((t) => t.building.id));
+
+  // Recalcule & met à jour pour tous les bâtiments impactés
+  impacted.forEach((bid) => {
+    const b = buildings.find((bb) => bb.id === bid);
+    if (b) simulatePersonnelUI(b, temp);
+  });
+
+  // Ceux qui ne sont plus impactés repassent à la "base engagés"
+  _buildingsSimulated.forEach((bid) => {
+    if (!impacted.has(bid)) {
+      const b = buildings.find((bb) => bb.id === bid);
+      if (b) {
+        const base = getEngagedBaseForBuilding(b);
+        if (base.type === "cis") {
+          updateDispoUIForBuilding(b, {
+            proAvail: base.proAvail,
+            volAvail: base.volAvail,
+            proTotal: base.proTotal,
+            volTotal: base.volTotal,
+          });
+        } else {
+          updateDispoUIForBuilding(b, { total: base.total, avail: base.avail });
+        }
+      }
+    }
+  });
+
+  window._buildingsSimulated = impacted;
+}
+
 function getClientCycleByLocalTime() {
   const h = new Date().getHours();
   return h >= 22 || h < 6 ? "nuit" : "jour";
@@ -1168,16 +1336,16 @@ function refreshBuildingStatus(building) {
     const volTotal = parseInt(building.personnelVol || 0, 10);
 
     // Dispo = total - somme(personnel requis des véhicules EN INTERVENTION)
-    const engagedStatuses = new Set(["er", "al", "at", "tr", "ch", "ot"]);
+    // Dispo = total - somme(personnel requis des véhicules EN INTERVENTION)
     let proUsed = 0;
     let volUsed = 0;
 
-    building.vehicles.forEach((v) => {
+    (building.vehicles || []).forEach((v) => {
       if (!v) return;
-      if (!engagedStatuses.has(v.status)) return;
+      if (!isEngagedStatus(v.status)) return;
       const req = parseInt(v.required || v.personnel || 1, 10);
 
-      // Répartition simple : on “prend” les pros en priorité, puis on complète avec des vol
+      // Répartition simple : pro en priorité, puis on complète en vol
       const proThis = Math.min(Math.max(proTotal - proUsed, 0), req);
       const volThis = Math.max(0, req - proThis);
 
@@ -1201,7 +1369,7 @@ function refreshBuildingStatus(building) {
     let engagedPersonnel = 0;
     building.vehicles.forEach((v) => {
       const isTemp = v._tempEngaged === true;
-      const isActive = ["er", "al", "at", "tr", "ch", "ot"].includes(v.status);
+      const isActive = isEngagedStatus(v.status);
       if (isTemp || isActive)
         engagedPersonnel += v.required || v.personnel || 1;
     });
@@ -1213,7 +1381,7 @@ function refreshBuildingStatus(building) {
 
     building.vehicles.forEach((v) => {
       if (v.status === "ot" && v.retourEnCours) return;
-      const isEngaged = ["er", "al", "at", "tr", "ch", "ot"].includes(v.status);
+      const isEngaged = isEngagedStatus(v.status);
       if (v.ready && !isEngaged && !v.retourEnCours) {
         const enough = available >= (v.required || 0);
         updateVehicleStatus(v, enough ? "dc" : "nd");
@@ -1223,44 +1391,37 @@ function refreshBuildingStatus(building) {
 }
 
 function simulatePersonnelUI(building, tempVehicles) {
-  const safeId = getSafeId(building);
-  if (
-    building.type === "cpi" ||
-    building.type === "cs" ||
-    building.type === "csp"
-  ) {
-    let proUsed = 0,
-      volUsed = 0;
-    tempVehicles
-      .filter((v) => v.building === building)
-      .forEach((v) => {
-        // Simulation : on utilise toujours les pros en priorité
-        const req = v.personnel;
-        const proDispo = building.personnelPro - proUsed;
-        const proThis = Math.min(proDispo, req);
-        const volThis = Math.max(0, req - proThis);
-        proUsed += proThis;
-        volUsed += volThis;
+  // 1) Base "engagés"
+  const base = getEngagedBaseForBuilding(building);
+
+  // 2) Soustraction des SÉLECTIONS temporaires (cases cochées)
+  if (base.type === "cis") {
+    let proAvail = base.proAvail;
+    let volAvail = base.volAvail;
+
+    (tempVehicles || [])
+      .filter((tv) => tv && tv.building === building)
+      .forEach((tv) => {
+        const req = parseInt(tv.personnel || tv.required || 1, 10);
+        const takePro = Math.min(proAvail, req);
+        const takeVol = Math.max(0, req - takePro);
+        proAvail -= takePro;
+        volAvail -= takeVol;
       });
-    const proDispo = building.personnelPro - proUsed;
-    const volDispo = building.personnelVol - volUsed;
-    document.getElementById(`staff-pro-${safeId}`).textContent =
-      building.personnelPro;
-    document.getElementById(`staff-vol-${safeId}`).textContent =
-      building.personnelVol;
-    document.getElementById(`staff-pro-avail-${safeId}`).textContent = proDispo;
-    document.getElementById(`staff-vol-avail-${safeId}`).textContent = volDispo;
+
+    updateDispoUIForBuilding(building, {
+      proAvail,
+      volAvail,
+      proTotal: base.proTotal,
+      volTotal: base.volTotal,
+    });
   } else {
-    const engaged = tempVehicles
-      .filter((v) => v.building === building)
-      .reduce((sum, v) => sum + v.personnel, 0);
-    const total = building.personnel;
-    const dispo = total - engaged;
-    const safeId = getSafeId(building);
-    const elTotal = document.getElementById(`staff-${safeId}`);
-    const elDispo = document.getElementById(`staff-avail-${safeId}`);
-    if (elTotal) elTotal.textContent = total;
-    if (elDispo) elDispo.textContent = dispo;
+    const selected = (tempVehicles || [])
+      .filter((tv) => tv && tv.building === building)
+      .reduce((s, tv) => s + parseInt(tv.personnel || tv.required || 1, 10), 0);
+
+    const avail = Math.max(0, base.avail - selected);
+    updateDispoUIForBuilding(building, { total: base.total, avail });
   }
 }
 
@@ -1278,6 +1439,7 @@ function generateVehicleCheckboxList(departType, disponibles, targetListEl) {
     checkbox.type = "checkbox";
     checkbox.checked = autoCheck;
     checkbox.dataset.vehicleId = v.id;
+    checkbox.onchange = updatePersonnelSimulation;
     if (!entry.building.id) {
       entry.building.id = `building-${Date.now()}-${Math.floor(
         Math.random() * 1000
@@ -1294,6 +1456,7 @@ function generateVehicleCheckboxList(departType, disponibles, targetListEl) {
     wrapper.appendChild(labelEl);
     targetListEl.appendChild(wrapper);
   });
+  requestAnimationFrame(updatePersonnelSimulation);
 }
 
 function updateMissionButton(mission) {

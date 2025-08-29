@@ -506,9 +506,19 @@ function buildVehicleListForCall(
     const header = document.createElement("div");
     header.className = "building-header";
     header.innerHTML = `
-      <span class="bh-left"><strong>${shortType} ${building.name}</strong></span>
-      <span class="bh-right"><span class="grp-label">Dispo&nbsp;:</span><span class="grp-count"><span class="perso-left" data-building-id="${building.id}" data-total="${personnelTotal}">${personnelDispo}</span>/<span>${personnelTotal}</span></span></span>
-    `;
+  <span class="bh-left"><strong>${shortType} ${building.name}</strong></span>
+  <span class="bh-right">
+    <span class="grp-label">Dispo&nbsp;:</span>
+    <span class="grp-count">
+      <span
+        class="perso-left"
+        data-building-id="${building.id}"
+        data-base="${personnelDispo}"
+        data-total="${personnelTotal}"
+      >${personnelDispo}</span>/<span>${personnelTotal}</span>
+    </span>
+  </span>
+`;
 
     if (personnelDispo === 0) header.classList.add("no-staff");
     section.appendChild(header);
@@ -556,6 +566,10 @@ function buildVehicleListForCall(
         isChecked = selectedIds.has(v.id);
       }
 
+      if (containerId === "reinforcement-list") {
+        isChecked = isChecked || REINFORCEMENT_STATE.selected.has(v.id);
+      }
+
       const cleanLabel = v.label.split("—")[0].trim();
       const row = document.createElement("label");
       row.className = "vehicle-select-row";
@@ -581,7 +595,7 @@ function buildVehicleListForCall(
 
       const cb = row.querySelector("input[type=checkbox]");
       cb.addEventListener("change", () => {
-        if (typeof refreshRecap === "function") refreshRecap();
+        //if (typeof refreshRecap === "function") refreshRecap();
         if (typeof scheduleAutoSave === "function") scheduleAutoSave();
       });
 
@@ -644,63 +658,69 @@ function setupPersonnelCountListeners() {
       cb.addEventListener("change", () => {
         const bid = cb.dataset.buildingId;
         const staff = parseInt(cb.dataset.staff || "1", 10);
-        const span = document.querySelector(
+
+        // 🔒 Scope: section & liste courantes
+        const section = cb.closest(".building-group");
+        const listRoot = cb.closest("#vehicle-list, #reinforcement-list");
+
+        // Header de CE groupe (pas le premier trouvé dans le DOM)
+        const span = section?.querySelector(
           `.perso-left[data-building-id="${bid}"]`
         );
         if (!span) return;
 
-        const base = parseInt(span.dataset.total || "0", 10);
-        const inputs = document.querySelectorAll(
-          `input[data-building-id="${bid}"]`
+        // Base lue sur CE header
+        const base = parseInt(
+          span.dataset.base || span.dataset.total || "0",
+          10
         );
-        let used = 0;
 
+        // Somme des cases de CE bâtiment mais UNIQUEMENT dans CETTE liste
+        const inputs = listRoot
+          ? listRoot.querySelectorAll(`input[data-building-id="${bid}"]`)
+          : document.querySelectorAll(`input[data-building-id="${bid}"]`);
+
+        let used = 0;
         inputs.forEach((i) => {
-          if (i.checked && i !== cb) {
+          if (i.checked && i !== cb)
             used += parseInt(i.dataset.staff || "1", 10);
-          }
         });
 
         const row = cb.closest(".vehicle-select-row");
         const status = row?.querySelector(".status");
 
-        // Synchronisation avec la sidebar
-        const sidebarStatus = document.querySelector(
-          `.status[data-vehicle-id="${cb.dataset.vehicleId}"]`
-        );
-
         if (cb.checked) {
           if (used + staff > base) {
             cb.checked = false;
             cb.title = "Pas assez de personnel disponible pour ce véhicule.";
+            if (typeof refreshRecap === "function") refreshRecap();
+            if (typeof scheduleAutoSave === "function") scheduleAutoSave();
             return;
           }
-
           cb.removeAttribute("title");
           used += staff;
-
           if (status) status.classList.add("selected-synced");
-          if (sidebarStatus) sidebarStatus.classList.add("selected-synced");
         } else {
-          if (status) {
-            status.classList.remove("selected-synced");
-            status.style.backgroundColor = "";
-            status.style.color = "";
-          }
-          if (sidebarStatus) {
-            sidebarStatus.classList.remove("selected-synced");
-            sidebarStatus.style.backgroundColor = "";
-            sidebarStatus.style.color = "";
-          }
+          if (status) status.classList.remove("selected-synced");
         }
 
-        const dispo = base - used;
+        const dispo = Math.max(0, base - used);
         span.textContent = dispo;
 
         const header = span.closest(".building-header");
-        if (header) {
-          header.classList.toggle("no-staff", dispo <= 0);
+        if (header) header.classList.toggle("no-staff", dispo <= 0);
+        // --- sync sélection renforts ---
+        const inReinfList = cb.closest("#reinforcement-list") !== null;
+        if (inReinfList) {
+          const vId = cb.dataset.vehicleId;
+          if (cb.checked) {
+            REINFORCEMENT_STATE.selected.add(vId);
+          } else {
+            REINFORCEMENT_STATE.selected.delete(vId);
+          }
         }
+        if (typeof refreshRecap === "function") refreshRecap();
+        if (typeof scheduleAutoSave === "function") scheduleAutoSave();
       });
     });
 }
@@ -764,14 +784,175 @@ function refreshVehicleStatusAndDistance() {
       statusSpan.textContent = vehicle.status.toUpperCase();
     }
   });
+  // --- Recalcule base + dispo pour chaque groupe du CALL MODAL ---
+  document
+    .querySelectorAll("#call-modal .building-group")
+    .forEach((section) => {
+      const span = section.querySelector(".perso-left");
+      if (!span) return;
+
+      const bid = span.dataset.buildingId;
+      const b = buildings.find((x) => String(x.id) === String(bid));
+      if (!b) return;
+
+      // Base = Total − Σ(personnel des véhicules EN INTERVENTION)
+      let baseAvail = 0;
+      const engaged = ["er", "al", "at", "tr", "ch", "ot"];
+      if (["cpi", "cs", "csp"].includes(b.type)) {
+        const proTotal = parseInt(b.personnelPro || 0, 10);
+        const volTotal = parseInt(b.personnelVol || 0, 10);
+        let proUsed = 0,
+          volUsed = 0;
+        (b.vehicles || []).forEach((v) => {
+          if (!v || !engaged.includes(v.status)) return;
+          const req = parseInt(v.required || v.personnel || 1, 10);
+          const takePro = Math.min(Math.max(proTotal - proUsed, 0), req);
+          const takeVol = Math.max(0, req - takePro);
+          proUsed += takePro;
+          volUsed += takeVol;
+        });
+        baseAvail = Math.max(0, proTotal - proUsed + (volTotal - volUsed));
+      } else {
+        const total = parseInt(b.personnel || 0, 10);
+        const engagedSum = (b.vehicles || [])
+          .filter((v) => v && engaged.includes(v.status))
+          .reduce(
+            (s, v) => s + parseInt(v.required || v.personnel || 1, 10),
+            0
+          );
+        baseAvail = Math.max(0, total - engagedSum);
+      }
+
+      // Cases cochées ACTUELLES dans CE groupe
+      const inputs = section.querySelectorAll(
+        `input[type="checkbox"][data-building-id="${bid}"]:checked`
+      );
+      let used = 0;
+      inputs.forEach((i) => (used += parseInt(i.dataset.staff || "1", 10)));
+
+      span.dataset.base = String(baseAvail);
+      const total = parseInt(span.dataset.total || "0", 10);
+      const dispo = Math.max(0, baseAvail - used);
+      span.textContent = dispo;
+
+      const header = span.closest(".building-header");
+      if (header) header.classList.toggle("no-staff", dispo <= 0);
+
+      // garde l’affichage x/Total cohérent
+      const denom = span.nextElementSibling;
+      if (denom && denom.tagName === "SPAN") denom.textContent = total;
+    });
+}
+
+function getRequiredForVehicle(vehicle) {
+  const typeKey = (vehicle.type || "").toUpperCase();
+  const req =
+    parseInt(vehicle.required || vehicle.personnel, 10) ||
+    parseInt((window.requiredPersonnel || {})[typeKey] || 1, 10);
+  return Math.max(1, req);
+}
+
+function engageStaffForDispatch(vehicle, building) {
+  if (!building) return;
+  const req = getRequiredForVehicle(vehicle);
+
+  if (["cpi", "cs", "csp"].includes(building.type)) {
+    const proAvail = Math.max(
+      0,
+      building.personnelAvailablePro ?? building.personnelPro ?? 0
+    );
+    const volAvail = Math.max(
+      0,
+      building.personnelAvailableVol ?? building.personnelVol ?? 0
+    );
+
+    const takePro = Math.min(proAvail, req);
+    const takeVol = Math.max(0, req - takePro);
+
+    building.personnelAvailablePro = proAvail - takePro;
+    building.personnelAvailableVol = volAvail - takeVol;
+
+    vehicle._engagedStaff = { pro: takePro, vol: takeVol };
+  } else {
+    const avail = Math.max(
+      0,
+      building.personnelAvailable ?? building.personnel ?? 0
+    );
+    const take = Math.min(avail, req);
+    building.personnelAvailable = avail - take;
+
+    // garde une trace pour la restitution
+    vehicle.required = req;
+    vehicle._engagedStaff = { total: take };
+  }
+
+  // petites MAJ UI si présentes
+  refreshBuildingStatus?.(building);
+  refreshVehicleStatusForBuilding?.(building);
+  updateVehicleListDisplay?.(getSafeId?.(building) ?? building.id);
+}
+
+function ensureDispatchedEntry(mission, vehicle, building) {
+  mission.dispatched = mission.dispatched || [];
+  let d = mission.dispatched.find(
+    (x) => !x.canceled && x.vehicle && x.vehicle.id === vehicle.id
+  );
+  if (!d) {
+    d = { vehicle, building, canceled: false, createdAt: Date.now() };
+    mission.dispatched.push(d);
+  }
+  return d;
 }
 
 function getVehicleLatLng(vehicle, building) {
-  return (
-    vehicle.marker?.getLatLng() ||
+  const src =
+    vehicle.marker?.getLatLng?.() ||
+    vehicle.lastKnownPosition ||
     vehicle.latlng ||
-    building.latlng || { lat: 0, lng: 0 }
-  );
+    building?.latlng ||
+    null;
+  return toLatLng(src, L.latLng(0, 0));
+}
+
+function toLatLng(p, fallback = null) {
+  if (!p) return fallback;
+  // L.LatLng
+  if (typeof p.lat === "number" && typeof p.lng === "number")
+    return L.latLng(p.lat, p.lng);
+  // {lat, lon}
+  if (typeof p.lat === "number" && typeof p.lon === "number")
+    return L.latLng(p.lat, p.lon);
+  // [lat, lng]
+  if (Array.isArray(p) && p.length >= 2 && +p[0] === p[0] && +p[1] === p[1])
+    return L.latLng(p[0], p[1]);
+  return fallback;
+}
+
+function normalizeMissionPosition(m) {
+  if (!m) return null;
+  // déjà OK
+  if (
+    m.position &&
+    typeof m.position.lat === "number" &&
+    typeof m.position.lng === "number"
+  )
+    return m.position;
+  // récupère d’où on peut
+  const p =
+    m.marker?.getLatLng?.() ||
+    m.latlng ||
+    (typeof m.lat === "number" && typeof m.lng === "number"
+      ? { lat: m.lat, lng: m.lng }
+      : null) ||
+    (typeof m.lat === "number" && typeof m.lon === "number"
+      ? { lat: m.lat, lng: m.lon }
+      : null);
+
+  if (p) {
+    m.position = { lat: p.lat, lng: p.lng ?? p.lon };
+    return m.position;
+  }
+  return null;
 }
 
 function closeCallModal() {
@@ -851,7 +1032,6 @@ document.getElementById("reveal-address-btn").addEventListener("click", () => {
     });
 
   // Cache les sections non pertinentes au clic
-  document.getElementById("vehicle-list").innerHTML = "";
   document.getElementById("launch-mission-btn").classList.add("hidden");
 });
 
@@ -935,9 +1115,9 @@ function openManageMission(missionId) {
               0,
               Math.ceil((v.arrivalTime - Date.now()) / 1000)
             );
-            arrivalTimer = `<span class="timer-er" style="margin-left:8px;color:#007bff;font-weight:bold;">⏱ ${secLeft}s</span>`;
+            // ⚠️ on ajoute data-vehicle-id pour cibler directement l’élément plus tard
+            arrivalTimer = `<span class="timer-er" data-vehicle-id="${v.id}" style="margin-left:8px;color:#007bff;font-weight:bold;">⏱ ${secLeft}s</span>`;
           }
-
           return `
               <li class="vehicle-entry">
                 <span>${v.label}</span>
@@ -1043,6 +1223,10 @@ function openManageMission(missionId) {
       ?.classList.contains("hidden");
     if (!isOpen) {
       clearInterval(manageMissionInterval);
+      if (window._timerERInterval) {
+        clearInterval(window._timerERInterval);
+        window._timerERInterval = null;
+      }
       return;
     }
 
@@ -1069,18 +1253,21 @@ function openManageMission(missionId) {
     mission.dispatched.forEach((d) => {
       const v = d.vehicle;
       if (v.status === "er" && v.arrivalTime) {
-        const el = document
-          .querySelector(
-            `#manage-modal .vehicle-entry .status[data-vehicle-id="${v.id}"]`
-          )
-          ?.parentElement?.querySelector(".timer-er");
+        // on cible directement le chrono par data-vehicle-id, où qu’il soit dans la ligne
+        const el = document.querySelector(
+          `#manage-modal .timer-er[data-vehicle-id="${v.id}"]`
+        );
 
         if (el) {
           const secLeft = Math.max(
             0,
             Math.ceil((v.arrivalTime - Date.now()) / 1000)
           );
-          el.textContent = `⏱ ${secLeft}s`;
+          // évite toute mise à jour inutile (et donc tout micro-reflow)
+          if (el.__lastSec !== secLeft) {
+            el.textContent = `⏱ ${secLeft}s`;
+            el.__lastSec = secLeft;
+          }
         }
       }
     });
@@ -1108,7 +1295,11 @@ function refreshReinforcementStatusAndDistance() {
       if (!vehicle) return;
 
       // Distance
-      const origin = vehicle.marker?.getLatLng?.() || building.latlng;
+      const origin =
+        vehicle.marker?.getLatLng?.() ||
+        vehicle.lastKnownPosition ||
+        building.latlng;
+
       if (origin) {
         const dist = Math.round(map.distance(pos, origin));
         const dEl = row.querySelector(".vehicle-distance");
@@ -1135,6 +1326,67 @@ function refreshReinforcementStatusAndDistance() {
         sEl.textContent = (vehicle.status || "").toUpperCase();
       }
     });
+  // --- Recalcule la base et la dispo affichée pour chaque groupe visible ---
+  document
+    .querySelectorAll("#manage-modal .building-group")
+    .forEach((section) => {
+      const bid = section.querySelector(".perso-left")?.dataset.buildingId;
+      if (!bid) return;
+      const b = buildings.find((x) => x.id === bid);
+      if (!b) return;
+
+      // Recalcule la base: Total − Σ(personnel des véhicules EN INTERVENTION)
+      let baseAvail;
+      if (["cpi", "cs", "csp"].includes(b.type)) {
+        const proTotal = parseInt(b.personnelPro || 0, 10);
+        const volTotal = parseInt(b.personnelVol || 0, 10);
+        let proUsed = 0,
+          volUsed = 0;
+        (b.vehicles || []).forEach((v) => {
+          if (!v || !["er", "al", "at", "tr", "ch", "ot"].includes(v.status))
+            return;
+          const req = parseInt(v.required || v.personnel || 1, 10);
+          const takePro = Math.min(Math.max(proTotal - proUsed, 0), req);
+          const takeVol = Math.max(0, req - takePro);
+          proUsed += takePro;
+          volUsed += takeVol;
+        });
+        baseAvail = Math.max(0, proTotal - proUsed + (volTotal - volUsed));
+      } else {
+        const total = parseInt(b.personnel || 0, 10);
+        const engaged = (b.vehicles || [])
+          .filter(
+            (v) => v && ["er", "al", "at", "tr", "ch", "ot"].includes(v.status)
+          )
+          .reduce(
+            (s, v) => s + parseInt(v.required || v.personnel || 1, 10),
+            0
+          );
+        baseAvail = Math.max(0, total - engaged);
+      }
+
+      // Somme de la sélection actuelle pour ce bâtiment
+      const inputs = section.querySelectorAll(
+        `input[type="checkbox"][data-building-id="${bid}"]:checked`
+      );
+      let used = 0;
+      inputs.forEach((i) => (used += parseInt(i.dataset.staff || "1", 10)));
+
+      // Applique
+      const span = section.querySelector(".perso-left");
+      if (span) {
+        span.dataset.base = String(baseAvail);
+        const total = parseInt(span.dataset.total || "0", 10);
+        const dispo = Math.max(0, baseAvail - used);
+        span.textContent = dispo;
+        const header = span.closest(".building-header");
+        if (header) header.classList.toggle("no-staff", dispo <= 0);
+
+        // garde l’affichage x/Total cohérent
+        const denom = span.nextElementSibling; // le <span> après perso-left
+        if (denom && denom.tagName === "SPAN") denom.textContent = total;
+      }
+    });
 }
 
 let currentMissionForReinforcement = null;
@@ -1143,13 +1395,17 @@ let reinforcementInterval = null;
 function sendSelectedReinforcementsFromManage() {
   const mission = missions.find((m) => m.id === REINFORCEMENT_STATE.missionId);
   if (!mission) return;
+  if (!normalizeMissionPosition(mission)) {
+    alert("Position de la mission inconnue (pas de lat/lng).");
+    return;
+  }
 
   const selected = Array.from(REINFORCEMENT_STATE.selected)
     .map((vId) => {
       let foundB = null,
         foundV = null;
       buildings.some((b) => {
-        const v = b.vehicles.find((x) => x.id === vId);
+        const v = (b.vehicles || []).find((x) => String(x.id) === String(vId));
         if (v) {
           foundB = b;
           foundV = v;
@@ -1170,130 +1426,12 @@ function sendSelectedReinforcementsFromManage() {
     dispatchVehicleToMission(vehicle, mission, building);
   });
 
-  // après envoi : on nettoie sélection + prises (les compteurs réels se mettront à jour ailleurs)
   REINFORCEMENT_STATE.selected.clear();
   REINFORCEMENT_STATE.takenByVehicle = {};
-
-  // refresh manage + liste
   refreshManageModal(mission.id);
   buildVehicleListForCall(false, "reinforcement-list", mission);
-
   scheduleAutoSave(300);
 }
-
-document.getElementById("reinforcement-send-btn").onclick = () => {
-  const checkboxes = document.querySelectorAll(
-    '#reinforcement-vehicles input[type="checkbox"]:checked'
-  );
-
-  if (checkboxes.length === 0) {
-    alert("Sélectionnez au moins un véhicule.");
-    return;
-  }
-
-  if (!currentMissionForReinforcement) {
-    console.warn("[RENFORT] Aucune mission en cours !");
-    return;
-  }
-
-  if (!currentMissionForReinforcement.vehicles) {
-    currentMissionForReinforcement.vehicles = [];
-  }
-
-  const vehiclesToSend = [];
-  const personnelVirtuel = {}; // Simulation pour toutes les casernes
-
-  checkboxes.forEach((cb) => {
-    const buildingId = cb.dataset.buildingId;
-    const vehicleId = cb.dataset.vehicleId;
-
-    const building = buildings.find((b) => b.id === buildingId);
-    if (!building) {
-      console.warn(`[RENFORT] Bâtiment introuvable pour ID: ${buildingId}`);
-      return;
-    }
-
-    const vehicle = building.vehicles.find((v) => v.id === vehicleId);
-    if (!vehicle || (vehicle.status !== "dc" && vehicle.status !== "ot")) {
-      console.warn(
-        `[RENFORT] Véhicule invalide : ${vehicle?.label} (${vehicle?.status})`
-      );
-      return;
-    }
-
-    const personnel = requiredPersonnel[vehicle.type] || 2;
-    let engagedStaff = { pro: 0, vol: 0 };
-
-    if (["cpi", "cs", "csp"].includes(building.type)) {
-      // ---- SPLIT PRO/VOL ----
-      if (!personnelVirtuel[buildingId]) {
-        personnelVirtuel[buildingId] = {
-          pro: building.personnelAvailablePro ?? building.personnelPro,
-          vol: building.personnelAvailableVol ?? building.personnelVol,
-        };
-      }
-      let proDispo = personnelVirtuel[buildingId].pro;
-      let volDispo = personnelVirtuel[buildingId].vol;
-      let takePro = Math.min(proDispo, personnel);
-      let takeVol = Math.max(0, personnel - takePro);
-      if (takePro + takeVol >= personnel) {
-        engagedStaff = { pro: takePro, vol: takeVol };
-        personnelVirtuel[buildingId].pro -= takePro;
-        personnelVirtuel[buildingId].vol -= takeVol;
-      } else {
-        // Pas assez de personnel pro/vol
-        console.warn(
-          `[RENFORT] Pas assez de personnel pro/vol dans ${building.name} pour ${vehicle.label}`
-        );
-        return;
-      }
-    } else if ("personnelAvailable" in building) {
-      // ---- LOGIQUE CLASSIQUE ----
-      if (typeof personnelVirtuel[buildingId] === "undefined") {
-        personnelVirtuel[buildingId] = building.personnelAvailable;
-      }
-      let dispo = personnelVirtuel[buildingId];
-      if (dispo >= personnel) {
-        personnelVirtuel[buildingId] -= personnel;
-      } else {
-        console.warn(
-          `[RENFORT] Pas assez de personnel dans ${building.name} pour ${vehicle.label} (restant simulé: ${dispo})`
-        );
-        return;
-      }
-    }
-
-    // Ajoute dans mission.vehicles si absent
-    if (
-      !currentMissionForReinforcement.vehicles.some(
-        (v) => v.vehicle && v.vehicle.id === vehicle.id
-      )
-    ) {
-      currentMissionForReinforcement.vehicles.push({
-        building,
-        vehicle,
-        personnel,
-        engagedStaff, // utile pour les casernes
-      });
-    }
-
-    // Ajoute dans la liste à renvoyer
-    vehiclesToSend.push({
-      building,
-      vehicle,
-      personnel,
-      engagedStaff,
-    });
-  });
-
-  // Fonction spécifique renfort
-  dispatchReinforcementsToMission(
-    currentMissionForReinforcement,
-    vehiclesToSend
-  );
-
-  if (typeof scheduleAutoSave === "function") scheduleAutoSave();
-};
 
 function clearHistory() {
   const list = document.getElementById("history-list");
@@ -3144,20 +3282,33 @@ function hasVehicleOnScene(m) {
 
 // Manque-t-il des véhicules par rapport aux besoins ?
 function missingVehicles(m) {
-  if (!Array.isArray(m.vehicles) || m.vehicles.length === 0) return false;
-  const requiredByType = m.vehicles.reduce(
-    (acc, t) => ((acc[t] = (acc[t] || 0) + 1), acc),
-    {}
+  // Récupère le modèle de mission (m.realType ou solutionType)
+  const tpl = (MISSION_TYPES[m.sourceType] || []).find(
+    (x) => x.type === (m.realType || m.solutionType)
   );
-  const sentByType = (m.dispatched || []).reduce((acc, d) => {
-    if (d.canceled || !d.vehicle) return acc;
-    const t = d.vehicle.type;
-    acc[t] = (acc[t] || 0) + 1;
-    return acc;
-  }, {});
-  return Object.keys(requiredByType).some(
-    (t) => (sentByType[t] || 0) < requiredByType[t]
-  );
+  const variant = tpl?.variants?.[0] || tpl;
+
+  // Besoins requis par type depuis le template
+  const required = {};
+  (variant?.vehicles || []).forEach((v) => {
+    if (!v || !v.type) return;
+    const n = Number(v.nombre || 1);
+    required[v.type] = (required[v.type] || 0) + n;
+  });
+  if (!Object.keys(required).length) return false; // pas de besoins connus ⇒ pas de "renfort demandé"
+
+  // Arrivés sur place pour CETTE mission
+  const arrived = {};
+  (m.dispatched || []).forEach((d) => {
+    if (d.canceled || !d.vehicle) return;
+    if (d.vehicle.status === "al") {
+      const t = d.vehicle.type;
+      arrived[t] = (arrived[t] || 0) + 1;
+    }
+  });
+
+  // Manque au moins un type ?
+  return Object.keys(required).some((t) => (arrived[t] || 0) < required[t]);
 }
 
 // Bus d'événements "missions"
