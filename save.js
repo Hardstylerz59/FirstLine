@@ -1,8 +1,14 @@
 // === Configuration Supabase ===
-const SUPABASE_URL = "https://ehcoxgtepvonkosqxtca.supabase.co";
+const SUPABASE_URL =
+  window.SUPABASE_URL || "https://ehcoxgtepvonkosqxtca.supabase.co";
 const SUPABASE_KEY =
+  window.SUPABASE_KEY ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVoY294Z3RlcHZvbmtvc3F4dGNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDcxNTUwMzIsImV4cCI6MjA2MjczMTAzMn0.Liz6UAVxyhsTtRyrrpcNCHnkIj6c8l00ZQYCeMDZpYY";
-const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const client = window.SUPABASE_CLIENT
+  ? window.SUPABASE_CLIENT
+  : supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// Optionnel : expose le client pour d'autres scripts si besoin
+window.__supabaseClient = client;
 
 const buildingPoisMap = new Map();
 

@@ -1,0 +1,210 @@
+/* ====================== responsive-fix.css =======================
+   Force le layout en colonne sur mobile, sidebars en tiroir (cachées),
+   topbar et modales verticales. À coller tel quel après ton CSS.
+   ============================================================== */
+
+/* -------- TABLETTE (<=1024px) : commence à resserrer ---------- */
+@media (max-width: 1024px) {
+  /* Grille du call-modal : 2 colonnes max */
+  .call-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  /* Boutons un peu plus compacts */
+  button,
+  .btn,
+  #top-bar button {
+    padding: 7px 12px;
+    font-size: 0.95rem;
+  }
+
+  /* Listes scrollables un peu plus hautes */
+  .vehicle-list-scroll {
+    max-height: 48vh;
+  }
+}
+
+/* ------------------- MOBILE (<=768px) -------------------------- */
+@media (max-width: 768px) {
+  /* ====== Structure générale : tout en colonne ====== */
+  #game-ui {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh; /* plein écran utile sur mobile */
+    overflow: hidden;
+  }
+
+  /* Topbar : en haut, en colonne, éléments pleine largeur */
+  #top-bar {
+    position: sticky; /* reste en haut quand on scrolle */
+    top: 0;
+    z-index: 3000;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 8px 10px;
+    height: auto; /* hauteur auto si plusieurs lignes */
+    min-height: 50px; /* garde une hauteur mini */
+  }
+  #top-bar > * {
+    width: 100%;
+  }
+  #top-bar button,
+  .btn {
+    width: 100%;
+  }
+
+  /* Map : prend tout l’espace restant sous la topbar */
+  #map-container {
+    position: relative !important;
+    inset: auto !important; /* annule top/left/right/bottom précédents */
+    flex: 1 1 auto;
+    min-height: 40dvh; /* évite l’écrasement total si peu de contenu */
+    overflow: hidden;
+  }
+
+  /* ====== Sidebars : tiroirs cachés par défaut ====== */
+  #interventions-container,
+  #buildings-container {
+    position: fixed !important;
+    top: 0;
+    bottom: 0;
+    width: min(86vw, 320px);
+    background: var(--ui-bg);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    z-index: 3500;
+    overflow: auto;
+    transition: transform 0.25s ease;
+  }
+  /* Cachées par défaut (hors écran) */
+  #interventions-container {
+    left: 0;
+    transform: translateX(-105%);
+  }
+  #buildings-container {
+    right: 0;
+    transform: translateX(105%);
+  }
+  /* Affichage quand une classe .is-open est posée via JS */
+  #interventions-container.is-open {
+    transform: translateX(0);
+  }
+  #buildings-container.is-open {
+    transform: translateX(0);
+  }
+
+  /* (Option) masquer les boutons réouvrir si tu gères l’ouverture différemment */
+  /* .reopen-btn { display: none; } */
+
+  /* ====== Modales : plein écran vertical ====== */
+  .modal,
+  .modal-overlay {
+    inset: 0;
+  }
+  .modal-content,
+  .modal.call-modal .modal-content,
+  .modal-statistics .modal-content {
+    width: 100vw !important;
+    max-width: none !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Corps de modal en colonne (tout ce qui était horizontal passe vertical) */
+  .modal.call-modal .modal-body,
+  .modal-columns,
+  .call-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    grid-auto-rows: min-content;
+    gap: 10px;
+    overflow: auto;
+    min-height: 0;
+  }
+
+  /* Zone véhicules : colonne + scroll interne propre */
+  #call-card-vehicles,
+  #vehicle-selection-section {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+  #vehicle-list,
+  .vehicle-list-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    max-height: none !important;
+  }
+
+  /* Lignes véhicule : compacte, cache la distance à droite */
+  .vehicle-select-row {
+    grid-template-columns: 22px 1fr auto !important;
+  }
+  .vehicle-distance {
+    display: none !important;
+  }
+
+  /* Cartes/encadrés plus denses */
+  .call-card,
+  .card,
+  .building-block {
+    padding: 12px;
+  }
+
+  /* Missions : texte sur plusieurs lignes + boutons pleine largeur */
+  #mission-list li h3,
+  #mission-list li p {
+    white-space: normal;
+  }
+  #mission-list li button {
+    width: 100%;
+  }
+
+  /* Grille d’admin/gestion : 1 colonne */
+  .manage-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px;
+  }
+
+  /* FAB plus petit */
+  #add-building-fab {
+    width: 50px;
+    height: 50px;
+    font-size: 2rem;
+    right: 16px;
+    bottom: 16px;
+  }
+}
+
+/* --------------- PETITS MOBILES (<=480px) ---------------------- */
+@media (max-width: 480px) {
+  #top-bar {
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  #top-bar button {
+    padding: 6px 9px;
+    font-size: 0.9rem;
+  }
+
+  /* Badges & pills plus petits */
+  .status,
+  .badge,
+  .recap-pill {
+    font-size: 0.75rem;
+  }
+
+  /* Tableaux plus serrés */
+  .calls-table th,
+  .calls-table td {
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+}
