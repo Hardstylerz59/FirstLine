@@ -100,7 +100,7 @@ window.addEventListener("DOMContentLoaded", () => {
   // Play
   function launch() {
     const iframe = document.getElementById("game-frame");
-    iframe.src = "/index.html?embed=1";
+    iframe.src = "/game.html?embed=1"; // ← nouveau nom
     document.getElementById("embed-wrapper").classList.remove("hidden");
     iframe.focus();
   }
