@@ -25,15 +25,60 @@
     <script>
       window.GAME_RELATIVE_URL = "../game/index.html";
     </script>
+    <!-- 🔌 Préconnect: CDN + Supabase (réduit la latence) -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link
+      rel="preconnect"
+      href="https://ehcoxgtepvonkosqxtca.supabase.co"
+      crossorigin
+    />
+    <link
+      rel="preconnect"
+      href="https://ehcoxgtepvonkosqxtca.supabase.in"
+      crossorigin
+    />
+
+    <!-- 🧠 Prérécupération de la page du jeu -->
+    <link rel="prefetch" href="../game/index.html" as="document" />
+
+    <!-- ⚡ Preload des assets critiques du jeu (adapter les noms si différent) -->
+    <link rel="preload" href="../game/main.css" as="style" />
+    <link rel="preload" href="../game/responsive.css" as="style" />
+    <link rel="preload" href="../game/map.js" as="script" crossorigin />
+    <link rel="preload" href="../game/missions.js" as="script" crossorigin />
+    <link rel="preload" href="../game/ui.js" as="script" crossorigin />
+
+    <!-- ♨️ Warm-up de secours (prefetch JS/CSS si le navigateur ignore preload) -->
+    <script>
+      (function warmGame() {
+        const files = [
+          "../game/main.css",
+          "../game/responsive.css",
+          "../game/map.js",
+          "../game/missions.js",
+          "../game/ui.js",
+        ];
+        for (const href of files) {
+          const l = document.createElement("link");
+          l.rel = "prefetch";
+          l.href = href;
+          document.head.appendChild(l);
+        }
+      })();
+    </script>
   </head>
   <body>
     <!-- ====== Header ====== -->
     <header class="site-header">
       <div class="wrap row">
-        <a class="brand" href="#">
+        <a
+          class="brand"
+          href="javascript:void(0)"
+          aria-label="Accueil Services de Secours"
+        >
           <img
             src="../assets/icons/mission.png"
-            alt="Logo"
+            alt=""
             width="28"
             height="28"
             loading="eager"
@@ -44,7 +89,9 @@
           <a href="#features">Fonctionnalités</a>
           <a href="#stats">Stats</a>
           <a href="#compte">Compte</a>
-          <button id="launchTop" class="btn btn-primary">Lancer le jeu</button>
+          <button id="launchTop" class="btn btn-primary" type="button">
+            Lancer le jeu
+          </button>
         </nav>
       </div>
     </header>
@@ -63,43 +110,46 @@
             jeu dans un nouvel onglet.
           </p>
           <div class="cta-row">
-            <button id="launchHero" class="btn btn-primary btn-lg">
+            <button
+              id="launchHero"
+              class="btn btn-primary btn-lg"
+              type="button"
+            >
               🚀 Lancer le jeu
             </button>
             <a href="#features" class="btn btn-ghost btn-lg">Découvrir</a>
           </div>
-          <ul class="pill-list">
+          <ul class="pill-list" aria-label="Points clés du jeu">
             <li>Cartes & missions dynamiques</li>
             <li>Sauvegardes cloud</li>
             <li>Progression persistante</li>
           </ul>
         </div>
 
-        <div class="hero-visual">
-          <!-- Mini “gallery” avec tes assets existants -->
+        <div class="hero-visual" aria-hidden="true">
           <div class="gallery">
             <figure>
-              <img src="../assets/icons/fpt.png" alt="FPT" />
+              <img src="../assets/icons/fpt.png" alt="" />
               <figcaption>FPT</figcaption>
             </figure>
             <figure>
-              <img src="../assets/icons/vsav.png" alt="VSAV" />
+              <img src="../assets/icons/vsav.png" alt="" />
               <figcaption>VSAV</figcaption>
             </figure>
             <figure>
-              <img src="../assets/icons/vsr.png" alt="VSR" />
+              <img src="../assets/icons/vsr.png" alt="" />
               <figcaption>VSR</figcaption>
             </figure>
             <figure>
-              <img src="../assets/icons/commissariat.png" alt="Commissariat" />
+              <img src="../assets/icons/commissariat.png" alt="" />
               <figcaption>Police</figcaption>
             </figure>
             <figure>
-              <img src="../assets/icons/caserne.png" alt="Caserne" />
+              <img src="../assets/icons/caserne.png" alt="" />
               <figcaption>Caserne</figcaption>
             </figure>
             <figure>
-              <img src="../assets/weather/sun.png" alt="Météo" />
+              <img src="../assets/weather/sun.png" alt="" />
               <figcaption>Météo</figcaption>
             </figure>
           </div>
@@ -149,11 +199,13 @@
     </section>
 
     <!-- ====== Stats joueur (affichées si connecté) ====== -->
-    <section id="stats" class="section section-alt hidden">
+    <section id="stats" class="section section-alt hidden" aria-live="polite">
       <div class="wrap">
         <div class="row space-between align-center">
           <h2 class="section-title">Vos statistiques</h2>
-          <button id="playNowTop" class="btn btn-primary">Lancer le jeu</button>
+          <button id="playNowTop" class="btn btn-primary" type="button">
+            Lancer le jeu
+          </button>
         </div>
 
         <div class="stats-grid">
@@ -173,13 +225,6 @@
             <dt>Heures de jeu</dt>
             <dd id="statHours" class="skeleton">—</dd>
           </div>
-        </div>
-
-        <div class="saves">
-          <h3>Dernières sauvegardes</h3>
-          <ul id="savesList" class="saves-list">
-            <!-- rempli dynamiquement -->
-          </ul>
         </div>
       </div>
     </section>
@@ -251,7 +296,7 @@
             role="status"
             aria-live="polite"
           >
-            <div class="avatar">👤</div>
+            <div class="avatar" aria-hidden="true">👤</div>
             <div class="user-infos">
               <p class="hello">
                 Connecté en tant que <strong id="userName"></strong>
@@ -259,10 +304,12 @@
               <p class="small muted" id="userEmail"></p>
             </div>
             <div class="user-actions">
-              <button id="playNow" class="btn btn-primary">
+              <button id="playNow" class="btn btn-primary" type="button">
                 Lancer le jeu
               </button>
-              <button id="logout" class="btn btn-ghost">Se déconnecter</button>
+              <button id="logout" class="btn btn-ghost" type="button">
+                Se déconnecter
+              </button>
             </div>
           </div>
         </div>
@@ -285,7 +332,11 @@
             <div class="cta-inner">
               <h3>Prêt à intervenir ?</h3>
               <p>Votre équipe est en attente. Un clic pour démarrer.</p>
-              <button id="launchBottom" class="btn btn-primary btn-lg">
+              <button
+                id="launchBottom"
+                class="btn btn-primary btn-lg"
+                type="button"
+              >
                 🚀 Lancer le jeu
               </button>
             </div>

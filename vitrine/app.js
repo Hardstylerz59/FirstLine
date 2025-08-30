@@ -8,21 +8,33 @@ const setText = (el, txt) => {
 const show = (el) => el?.classList.remove("hidden");
 const hide = (el) => el?.classList.add("hidden");
 
-// Ouvre immédiatement le jeu (évite les popups bloqués)
-function openGameImmediate() {
+// Ouvre le jeu dans un nouvel onglet (sans remplacer la vitrine)
+function openGameNewTab() {
   const href = window.GAME_RELATIVE_URL || "../game/index.html";
-  const win = window.open(href, "_blank", "noopener");
-  if (!win) {
-    // Fallback si le navigateur bloque quand même
-    window.location.href = href;
-  }
+  const a = document.createElement("a");
+  a.href = href;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
+[
+  "#launchTop",
+  "#launchHero",
+  "#launchBottom",
+  "#playNow",
+  "#playNowTop",
+].forEach((sel) =>
+  document.querySelector(sel)?.addEventListener("click", (e) => {
+    e.preventDefault();
+    openGameNewTab();
+  })
+);
 
 // =========================
-/* Supabase (même projet que le jeu)
-   Nécessite vitrine/authConfig.js avec:
-   window.SUPABASE_URL = "https://xxx.supabase.co";
-   window.SUPABASE_KEY = "ANON_KEY"; */
+// Supabase (même projet que le jeu)
 // =========================
 if (!window.SUPABASE_URL || !window.SUPABASE_KEY) {
   console.error(
@@ -38,6 +50,19 @@ const sb = window.supabase.createClient(
 );
 
 // =========================
+// CONFIG SOURCE STATS (adapter si besoin)
+// Vue recommandée: player_stats(user_id, total_km, interventions_count, vehicles_count, hours_played)
+// =========================
+const STATS_SOURCE = {
+  table: "player_stats",
+  userId: "user_id",
+  km: "total_km",
+  interventions: "interventions_count",
+  vehicles: "vehicles_count",
+  hours: "hours_played",
+};
+
+// =========================
 // DOM
 // =========================
 const yearEl = $("#year");
@@ -47,7 +72,6 @@ const statKm = $("#statKm");
 const statInterventions = $("#statInterventions");
 const statVehicles = $("#statVehicles");
 const statHours = $("#statHours");
-const savesList = $("#savesList");
 
 const loginForm = $("#loginForm");
 const authMsg = $("#authMsg");
@@ -88,6 +112,9 @@ function displayUser(user) {
   show(sectionStats);
 }
 
+// =========================
+// Auth helpers
+// =========================
 async function currentUser() {
   const {
     data: { user },
@@ -96,146 +123,81 @@ async function currentUser() {
 }
 
 // =========================
-// Stats loading helpers
+// Stats (Supabase uniquement)
 // =========================
-function clearSkeleton() {
-  [statKm, statInterventions, statVehicles, statHours].forEach((el) =>
-    el?.classList.remove("skeleton")
-  );
-}
-function setSkeleton() {
-  [statKm, statInterventions, statVehicles, statHours].forEach((el) =>
-    el?.classList.add("skeleton")
-  );
-}
-function readNested(obj, paths, fallback = null) {
-  for (const p of paths) {
-    const val = p
-      .split(".")
-      .reduce(
-        (acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined),
-        obj
-      );
-    if (val !== undefined && val !== null) return val;
-  }
-  return fallback;
+function setSkeleton(on) {
+  [statKm, statInterventions, statVehicles, statHours].forEach((el) => {
+    if (!el) return;
+    el.classList.toggle("skeleton", !!on);
+    if (on) el.textContent = "—";
+  });
 }
 
-// 1) Vue recommandée: player_stats (user_id, total_km, interventions_count, vehicles_count, hours_played)
-async function fetchStatsFromView(userId) {
+async function fetchStatsFromConfiguredSource(userId) {
+  const s = STATS_SOURCE;
+  const columns = [s.userId, s.km, s.interventions, s.vehicles, s.hours].join(
+    ", "
+  );
   const { data, error } = await sb
-    .from("player_stats")
-    .select("*")
-    .eq("user_id", userId)
+    .from(s.table)
+    .select(columns)
+    .eq(s.userId, userId)
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw error;
+  if (!data) return null;
   return {
-    km: data.total_km ?? data.kilometers ?? 0,
-    interventions: data.interventions_count ?? data.missions_count ?? 0,
-    vehicles: data.vehicles_count ?? data.fleet_count ?? 0,
-    hours:
-      data.hours_played ??
-      (data.play_time_minutes ? data.play_time_minutes / 60 : 0),
+    km: Number(data[s.km] ?? 0),
+    interventions: Number(data[s.interventions] ?? 0),
+    vehicles: Number(data[s.vehicles] ?? 0),
+    hours: Number(data[s.hours] ?? 0),
   };
 }
 
-// 2) Reconstruit via tables probables (vehicles / interventions / profiles)
-async function fetchStatsFromTables(userId) {
-  const tryCount = async (table, field = "user_id") => {
-    const { count, error } = await sb
-      .from(table)
-      .select("*", { count: "exact", head: true })
-      .eq(field, userId);
-    if (error) return null;
-    return count ?? null;
-  };
-
-  const vehCount =
-    (await tryCount("vehicles")) ??
-    (await tryCount("player_vehicles")) ??
-    (await tryCount("fleet")) ??
-    0;
-
-  const intCount =
-    (await tryCount("interventions")) ?? (await tryCount("missions")) ?? 0;
-
-  let hours = 0,
-    km = 0;
-  try {
-    const { data: profile } = await sb
-      .from("profiles")
-      .select("hours_played, total_km")
-      .eq("id", userId)
-      .maybeSingle();
-    if (profile) {
-      hours = profile.hours_played ?? hours;
-      km = profile.total_km ?? km;
-    }
-  } catch {}
-
-  return { km, interventions: intCount, vehicles: vehCount, hours };
-}
-
-// 3) Sinon, lit la dernière sauvegarde pour en déduire des stats
-async function fetchStatsFromLatestSave(userId) {
+async function fetchStatsFallbackProfiles(userId) {
+  // Fallback si vous stockez dans profiles(id, total_km, interventions, vehicles, hours_played)
   const { data, error } = await sb
-    .from("saves")
-    .select("*")
-    .eq("user_id", userId)
-    .order("updated_at", { ascending: false })
-    .limit(1);
-  if (error || !data || !data[0]) return null;
-
-  const save = data[0];
-  const km = readNested(
-    save,
-    ["stats.total_km", "stats.km", "totals.km", "telemetry.km"],
-    0
-  );
-  const interventions = readNested(
-    save,
-    ["stats.interventions", "totals.interventions", "missions.completed"],
-    0
-  );
-  const vehicles = readNested(
-    save,
-    ["stats.vehicles", "fleet.count", "vehicles.length"],
-    0
-  );
-  const hours = readNested(
-    save,
-    ["stats.hours", "play_time_hours", "play_time_minutes"],
-    0
-  );
-
+    .from("profiles")
+    .select("total_km, interventions, vehicles, hours_played")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) return null;
+  if (!data) return null;
   return {
-    km: km || 0,
-    interventions: interventions || 0,
-    vehicles: vehicles || 0,
-    hours: typeof hours === "number" ? (hours > 300 ? hours / 60 : hours) : 0, // minutes -> heures si besoin
+    km: Number(data.total_km ?? 0),
+    interventions: Number(data.interventions ?? 0),
+    vehicles: Number(data.vehicles ?? 0),
+    hours: Number(data.hours_played ?? 0),
   };
 }
 
 async function loadPlayerStats(user) {
   if (!user) return;
-  setSkeleton();
+  setSkeleton(true);
 
-  let stats = null;
-  try {
-    stats = await fetchStatsFromView(user.id);
-  } catch {}
-  if (!stats) {
-    try {
-      stats = await fetchStatsFromTables(user.id);
-    } catch {}
-  }
-  if (!stats) {
-    try {
-      stats = await fetchStatsFromLatestSave(user.id);
-    } catch {}
-  }
-  if (!stats) stats = { km: 0, interventions: 0, vehicles: 0, hours: 0 };
+  // Timeout de sécurité pour ne jamais rester en "chargement" > 6s
+  const timeout = new Promise((resolve) =>
+    setTimeout(() => resolve("TIMEOUT"), 6000)
+  );
+  const job = (async () => {
+    let stats = await fetchStatsFromConfiguredSource(user.id);
+    if (!stats) stats = await fetchStatsFallbackProfiles(user.id);
+    if (!stats) stats = { km: 0, interventions: 0, vehicles: 0, hours: 0 };
+    return stats;
+  })();
 
+  const result = await Promise.race([job, timeout]);
+
+  if (result === "TIMEOUT") {
+    // Affiche des tirets clairs plutôt que 0
+    setText(statKm, "—");
+    setText(statInterventions, "—");
+    setText(statVehicles, "—");
+    setText(statHours, "—");
+    setSkeleton(false);
+    return;
+  }
+
+  const stats = result;
   setText(statKm, new Intl.NumberFormat("fr-FR").format(Math.round(stats.km)));
   setText(
     statInterventions,
@@ -245,49 +207,10 @@ async function loadPlayerStats(user) {
   setText(
     statHours,
     new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 }).format(
-      stats.hours || 0
+      stats.hours
     )
   );
-
-  clearSkeleton();
-}
-
-async function loadRecentSaves(user) {
-  if (!user || !savesList) return;
-  savesList.innerHTML = "";
-  try {
-    let { data, error } = await sb
-      .from("saves")
-      .select("id, name, updated_at, created_at")
-      .eq("user_id", user.id)
-      .order("updated_at", { ascending: false })
-      .limit(3);
-    if (error) throw error;
-    if (!data || data.length === 0) {
-      const alt = await sb
-        .from("saves")
-        .select("id, name, created_at")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(3);
-      data = alt.data || [];
-    }
-    if (data.length === 0) {
-      savesList.innerHTML = `<li><span class="meta">Aucune sauvegarde pour le moment.</span></li>`;
-      return;
-    }
-    const fmt = (d) => (d ? new Date(d).toLocaleString("fr-FR") : "—");
-    data.forEach((s) => {
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <div class="meta"><strong>${s.name || "Sauvegarde"}</strong></div>
-        <div class="date">${fmt(s.updated_at || s.created_at)}</div>
-      `;
-      savesList.appendChild(li);
-    });
-  } catch {
-    savesList.innerHTML = `<li><span class="meta">Impossible de charger les sauvegardes.</span></li>`;
-  }
+  setSkeleton(false);
 }
 
 // =========================
@@ -309,7 +232,6 @@ loginForm?.addEventListener("submit", async (e) => {
     const user = data.user;
     displayUser(user);
     await loadPlayerStats(user);
-    await loadRecentSaves(user);
   } catch (err) {
     setText(authMsg, err?.message || "Erreur de connexion");
     authMsg.style.color = "#b91c1c";
@@ -335,7 +257,6 @@ $("#btnSignUp")?.addEventListener("click", async () => {
       setText(authMsg, "Compte créé et connecté !");
       displayUser(data.user);
       await loadPlayerStats(data.user);
-      await loadRecentSaves(data.user);
     }
   } catch (err) {
     setText(authMsg, err?.message || "Erreur à l'inscription");
@@ -360,18 +281,21 @@ $("#btnMagic")?.addEventListener("click", async () => {
   }
 });
 
+// Déconnexion — on recharge la page pour repartir d'un état propre
 logoutBtn?.addEventListener("click", async () => {
-  await sb.auth.signOut();
-  displayUser(null);
+  try {
+    await sb.auth.signOut();
+  } catch {}
+  location.reload();
 });
 
 // =========================
-// Lancement du jeu — OUVERTURE IMMÉDIATE
+// Lancement du jeu — NOUVEL ONGLET garanti
 // =========================
 [launchTop, launchHero, launchBottom, playNowBtn, playNowTop].forEach((btn) => {
   btn?.addEventListener("click", (e) => {
     e.preventDefault();
-    openGameImmediate(); // pas d'await → pas de popup bloqué
+    openGameNewTab();
   });
 });
 
@@ -380,22 +304,16 @@ logoutBtn?.addEventListener("click", async () => {
 // =========================
 yearEl && (yearEl.textContent = new Date().getFullYear());
 
-// Met à jour l'UI et charge les stats à chaque changement de session
+// Met à jour l'UI + charge stats à chaque changement de session
 sb.auth.onAuthStateChange(async (_e, session) => {
   const user = session?.user || null;
   displayUser(user);
-  if (user) {
-    await loadPlayerStats(user);
-    await loadRecentSaves(user);
-  }
+  if (user) await loadPlayerStats(user);
 });
 
 // Premier rendu
 (async () => {
   const user = await currentUser();
   displayUser(user);
-  if (user) {
-    await loadPlayerStats(user);
-    await loadRecentSaves(user);
-  }
+  if (user) await loadPlayerStats(user);
 })();

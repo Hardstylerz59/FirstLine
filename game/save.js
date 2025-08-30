@@ -10,17 +10,22 @@ const client = window.SUPABASE_CLIENT
 // Optionnel : expose le client pour d'autres scripts si besoin
 window.__supabaseClient = client;
 
-// Où se trouve la vitrine (depuis /game/)
+// Après la création du client Supabase
 window.VITRINE_URL = window.VITRINE_URL || "../vitrine/";
 
-// 🔒 Si pas connecté, on renvoie direct vers la vitrine
 (async () => {
   try {
     const {
-      data: { user },
-    } = await client.auth.getUser();
-    if (!user) location.replace(window.VITRINE_URL);
-  } catch (e) {
+      data: { session },
+    } = await client.auth.getSession(); // local, instantané
+    if (!session) {
+      location.replace(window.VITRINE_URL);
+      return;
+    }
+    try {
+      window.dispatchEvent(new Event("game:ready"));
+    } catch {}
+  } catch {
     location.replace(window.VITRINE_URL);
   }
 })();
@@ -303,6 +308,7 @@ async function signIn() {
 }
 
 // 🚪 Déconnexion depuis le jeu => retour vitrine
+// 🚪 Déconnexion depuis le jeu => retour vitrine immédiat
 async function signOut() {
   try {
     await client.auth.signOut();
