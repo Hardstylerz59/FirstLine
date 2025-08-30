@@ -1,6 +1,0 @@
-# jeusecours/.htaccess
-DirectoryIndex vitrine/index.html
-
-# (Facultatif) forcer / -> /vitrine/
-RewriteEngine On
-RewriteRule ^$ vitrine/ [R=302,L]

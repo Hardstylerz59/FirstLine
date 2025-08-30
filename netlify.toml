@@ -1,0 +1,5 @@
+# jeusecours/netlify.toml
+[[redirects]]
+  from = "/"
+  to = "/vitrine/"
+  status = 302
