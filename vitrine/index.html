@@ -6,20 +6,28 @@
     <title>Services de Secours — Vitrine</title>
     <meta
       name="description"
-      content="Connectez-vous via Supabase et lancez le jeu dans un nouvel onglet."
+      content="Le jeu de gestion des services de secours : planifiez, déployez vos moyens, sauvez des vies. Connectez-vous puis lancez le jeu."
     />
+
+    <!-- Icône / Logo -->
     <link rel="icon" href="../assets/icons/mission.png" />
+
+    <!-- Styles -->
     <link rel="stylesheet" href="./style.css" />
-    <!-- Config partagée (même que côté jeu) -->
+
+    <!-- Config partagée (même projet que le jeu) -->
     <script src="./authConfig.js"></script>
+
     <!-- Supabase v2 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Chemin vers le jeu (depuis /vitrine/) -->
     <script>
-      // Chemin vers le jeu (depuis /vitrine/)
       window.GAME_RELATIVE_URL = "../game/index.html";
     </script>
   </head>
   <body>
+    <!-- ====== Header ====== -->
     <header class="site-header">
       <div class="wrap row">
         <a class="brand" href="#">
@@ -33,198 +41,272 @@
           <span>Services de Secours</span>
         </a>
         <nav class="nav">
-          <a href="#presentation">Présentation</a>
+          <a href="#features">Fonctionnalités</a>
+          <a href="#stats">Stats</a>
           <a href="#compte">Compte</a>
           <button id="launchTop" class="btn btn-primary">Lancer le jeu</button>
         </nav>
       </div>
     </header>
 
-    <main>
-      <section class="hero">
-        <div class="wrap">
-          <h1>Gérez vos interventions, sauvez des vies.</h1>
+    <!-- ====== Hero ====== -->
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <h1>
+            Coordonnez pompiers, SMUR et police.<br />Prenez les bonnes
+            décisions.
+          </h1>
           <p class="lead">
-            Authentifiez-vous ici, puis lancez le jeu dans un nouvel onglet. La
-            session Supabase est partagée.
+            Un jeu de gestion opérationnelle : casernes à développer, flotte à
+            optimiser, interventions dynamiques. Connectez-vous puis lancez le
+            jeu dans un nouvel onglet.
           </p>
           <div class="cta-row">
             <button id="launchHero" class="btn btn-primary btn-lg">
               🚀 Lancer le jeu
             </button>
-            <a href="#presentation" class="btn btn-ghost btn-lg"
-              >En savoir plus</a
-            >
+            <a href="#features" class="btn btn-ghost btn-lg">Découvrir</a>
           </div>
+          <ul class="pill-list">
+            <li>Cartes & missions dynamiques</li>
+            <li>Sauvegardes cloud</li>
+            <li>Progression persistante</li>
+          </ul>
         </div>
-        <div class="hero-illustrations">
-          <img src="../assets/icons/fpt.png" alt="Camion de pompiers" />
-          <img src="../assets/icons/vsav.png" alt="Ambulance VSAV" />
-          <img src="../assets/icons/commissariat.png" alt="Police" />
-        </div>
-      </section>
 
-      <section id="presentation" class="section">
-        <div class="wrap">
-          <h2>Présentation</h2>
-          <p>
-            Planifiez, déployez et optimisez vos ressources (FPT, VSAV, VSR,
-            SMUR, EPA…). Sauvegardes cloud via Supabase, reprise de partie
-            instantanée.
-          </p>
-          <div class="features">
-            <article class="card">
+        <div class="hero-visual">
+          <!-- Mini “gallery” avec tes assets existants -->
+          <div class="gallery">
+            <figure>
+              <img src="../assets/icons/fpt.png" alt="FPT" />
+              <figcaption>FPT</figcaption>
+            </figure>
+            <figure>
+              <img src="../assets/icons/vsav.png" alt="VSAV" />
+              <figcaption>VSAV</figcaption>
+            </figure>
+            <figure>
+              <img src="../assets/icons/vsr.png" alt="VSR" />
+              <figcaption>VSR</figcaption>
+            </figure>
+            <figure>
+              <img src="../assets/icons/commissariat.png" alt="Commissariat" />
+              <figcaption>Police</figcaption>
+            </figure>
+            <figure>
               <img src="../assets/icons/caserne.png" alt="Caserne" />
-              <h3>Infrastructure</h3>
-              <p>
-                Construisez et améliorez vos casernes, hôpitaux et
-                commissariats.
-              </p>
-            </article>
-            <article class="card">
-              <img src="../assets/icons/mission.png" alt="Missions" />
-              <h3>Missions dynamiques</h3>
-              <p>
-                Incendies, secours, accidents… Priorisez et affectez les bons
-                moyens.
-              </p>
-            </article>
-            <article class="card">
+              <figcaption>Caserne</figcaption>
+            </figure>
+            <figure>
               <img src="../assets/weather/sun.png" alt="Météo" />
-              <h3>Contexte vivant</h3>
-              <p>
-                Météo et cycle jour/nuit influencent le rythme des
-                interventions.
-              </p>
-            </article>
+              <figcaption>Météo</figcaption>
+            </figure>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section id="compte" class="section section-alt">
-        <div class="wrap auth-grid">
-          <div class="auth-card">
-            <h2>Compte</h2>
-            <p class="muted">
-              Connexion via Supabase. Les sauvegardes restent associées à votre
-              compte.
+    <!-- ====== Features ====== -->
+    <section id="features" class="section">
+      <div class="wrap">
+        <h2 class="section-title">Ce que vous allez gérer</h2>
+        <div class="features">
+          <article class="card">
+            <img src="../assets/icons/caserne.png" alt="" />
+            <h3>Infrastructures</h3>
+            <p>
+              Construisez et améliorez casernes, centres de soins, commissariats
+              pour étendre votre couverture.
             </p>
+          </article>
+          <article class="card">
+            <img src="../assets/icons/mission.png" alt="" />
+            <h3>Missions dynamiques</h3>
+            <p>
+              Incendies, secours à victimes, accidents… Priorisez et engagez les
+              moyens adaptés.
+            </p>
+          </article>
+          <article class="card">
+            <img src="../assets/icons/vsav.png" alt="" />
+            <h3>Flotte opérationnelle</h3>
+            <p>
+              FPT, VSAV, VSR, SMUR, EPA… chaque véhicule a ses forces, ses coûts
+              et ses temps de trajet.
+            </p>
+          </article>
+          <article class="card">
+            <img src="../assets/weather/sun.png" alt="" />
+            <h3>Contexte vivant</h3>
+            <p>
+              Météo, heure, densité urbaine influencent le rythme et la
+              difficulté des interventions.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
 
-            <form id="loginForm" class="form" autocomplete="on">
-              <label for="email">Email</label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="vous@exemple.com"
-                required
-              />
+    <!-- ====== Stats joueur (affichées si connecté) ====== -->
+    <section id="stats" class="section section-alt hidden">
+      <div class="wrap">
+        <div class="row space-between align-center">
+          <h2 class="section-title">Vos statistiques</h2>
+          <button id="playNowTop" class="btn btn-primary">Lancer le jeu</button>
+        </div>
 
-              <label for="password">Mot de passe</label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                placeholder="••••••••"
-                minlength="6"
-                required
-              />
+        <div class="stats-grid">
+          <div class="stat-card">
+            <dt>Kilomètres parcourus</dt>
+            <dd id="statKm" class="skeleton">—</dd>
+          </div>
+          <div class="stat-card">
+            <dt>Interventions traitées</dt>
+            <dd id="statInterventions" class="skeleton">—</dd>
+          </div>
+          <div class="stat-card">
+            <dt>Véhicules possédés</dt>
+            <dd id="statVehicles" class="skeleton">—</dd>
+          </div>
+          <div class="stat-card">
+            <dt>Heures de jeu</dt>
+            <dd id="statHours" class="skeleton">—</dd>
+          </div>
+        </div>
 
-              <label for="pseudo">Pseudo (à l’inscription)</label>
-              <input
-                id="pseudo"
-                name="pseudo"
-                type="text"
-                placeholder="Votre pseudo"
-                minlength="2"
-                maxlength="24"
-              />
+        <div class="saves">
+          <h3>Dernières sauvegardes</h3>
+          <ul id="savesList" class="saves-list">
+            <!-- rempli dynamiquement -->
+          </ul>
+        </div>
+      </div>
+    </section>
 
-              <div class="row space-between align-center">
-                <div class="row">
-                  <button class="btn btn-primary" type="submit" id="btnSignIn">
-                    Se connecter
-                  </button>
-                  <button class="btn btn-ghost" type="button" id="btnSignUp">
-                    Créer un compte
-                  </button>
-                </div>
-                <button class="btn" type="button" id="btnMagic">
-                  Lien magique
+    <!-- ====== Compte ====== -->
+    <section id="compte" class="section">
+      <div class="wrap auth-grid">
+        <div class="auth-card">
+          <h2>Connexion</h2>
+          <p class="muted">
+            Connectez-vous pour synchroniser votre progression et accéder au
+            jeu.
+          </p>
+
+          <form id="loginForm" class="form" autocomplete="on">
+            <label for="email">Email</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="vous@exemple.com"
+              required
+            />
+
+            <label for="password">Mot de passe</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="••••••••"
+              minlength="6"
+              required
+            />
+
+            <label for="pseudo">Pseudo (à l’inscription)</label>
+            <input
+              id="pseudo"
+              name="pseudo"
+              type="text"
+              placeholder="Votre pseudo"
+              minlength="2"
+              maxlength="24"
+            />
+
+            <div class="row space-between align-center">
+              <div class="row">
+                <button class="btn btn-primary" type="submit" id="btnSignIn">
+                  Se connecter
+                </button>
+                <button class="btn btn-ghost" type="button" id="btnSignUp">
+                  Créer un compte
                 </button>
               </div>
-              <p
-                class="small muted"
-                id="authMsg"
-                role="status"
-                aria-live="polite"
-              ></p>
-            </form>
-
-            <div
-              id="userBox"
-              class="user-box hidden"
+              <button class="btn" type="button" id="btnMagic">
+                Lien magique
+              </button>
+            </div>
+            <p
+              class="small muted"
+              id="authMsg"
               role="status"
               aria-live="polite"
-            >
-              <div class="avatar">👤</div>
-              <div class="user-infos">
-                <p class="hello">
-                  Connecté en tant que <strong id="userName"></strong>
-                </p>
-                <p class="small muted" id="userEmail"></p>
-              </div>
-              <div class="user-actions">
-                <button id="playNow" class="btn btn-primary">
-                  Lancer le jeu
-                </button>
-                <button id="logout" class="btn btn-ghost">
-                  Se déconnecter
-                </button>
-              </div>
-            </div>
-          </div>
+            ></p>
+          </form>
 
-          <div class="auth-side">
-            <div class="tip">
-              <h3>Comment ça marche ?</h3>
-              <ol>
-                <li>Connectez-vous ici (ou inscrivez-vous).</li>
-                <li>
-                  Cliquez <em>Lancer le jeu</em> : un nouvel onglet s’ouvre.
-                </li>
-                <li>
-                  La déconnexion depuis le jeu vous ramène ici automatiquement.
-                </li>
-              </ol>
-            </div>
-            <div class="screen-note">
-              <p>
-                Le jeu s’ouvre via <code>../game/index.html</code> (même origine
-                = session partagée).
+          <div
+            id="userBox"
+            class="user-box hidden"
+            role="status"
+            aria-live="polite"
+          >
+            <div class="avatar">👤</div>
+            <div class="user-infos">
+              <p class="hello">
+                Connecté en tant que <strong id="userName"></strong>
               </p>
+              <p class="small muted" id="userEmail"></p>
+            </div>
+            <div class="user-actions">
+              <button id="playNow" class="btn btn-primary">
+                Lancer le jeu
+              </button>
+              <button id="logout" class="btn btn-ghost">Se déconnecter</button>
             </div>
           </div>
         </div>
-      </section>
-    </main>
 
+        <aside class="auth-side">
+          <div class="tip">
+            <h3>Conseils rapides</h3>
+            <ul>
+              <li>
+                Montez vite un premier <strong>VSAV</strong> et un
+                <strong>FPT</strong>.
+              </li>
+              <li>Évitez les trajets à vide : regroupez les départs.</li>
+              <li>
+                Surveillez la météo : elle modifie la charge des interventions.
+              </li>
+            </ul>
+          </div>
+          <div class="cta-banner">
+            <div class="cta-inner">
+              <h3>Prêt à intervenir ?</h3>
+              <p>Votre équipe est en attente. Un clic pour démarrer.</p>
+              <button id="launchBottom" class="btn btn-primary btn-lg">
+                🚀 Lancer le jeu
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ====== Footer ====== -->
     <footer class="site-footer">
       <div class="wrap row space-between">
         <p>© <span id="year"></span> Services de Secours</p>
         <div class="links">
-          <a href="#presentation">Présentation</a>
+          <a href="#features">Fonctionnalités</a>
+          <a href="#stats">Stats</a>
           <a href="#compte">Compte</a>
-          <button id="launchBottom" class="btn btn-primary btn-sm">
-            Lancer le jeu
-          </button>
         </div>
       </div>
     </footer>
 
+    <!-- App -->
     <script type="module" src="./app.js"></script>
-    <script>
-      window.GAME_RELATIVE_URL = "../game/index.html";
-    </script>
   </body>
 </html>
