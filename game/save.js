@@ -10,6 +10,21 @@ const client = window.SUPABASE_CLIENT
 // Optionnel : expose le client pour d'autres scripts si besoin
 window.__supabaseClient = client;
 
+// Où se trouve la vitrine (depuis /game/)
+window.VITRINE_URL = window.VITRINE_URL || "../vitrine/";
+
+// 🔒 Si pas connecté, on renvoie direct vers la vitrine
+(async () => {
+  try {
+    const {
+      data: { user },
+    } = await client.auth.getUser();
+    if (!user) location.replace(window.VITRINE_URL);
+  } catch (e) {
+    location.replace(window.VITRINE_URL);
+  }
+})();
+
 const buildingPoisMap = new Map();
 
 function createBuildingFromState(b) {
@@ -288,11 +303,12 @@ async function signIn() {
   await updateAuthUI();
 }
 
-// 🚪 Déconnexion utilisateur
+// 🚪 Déconnexion depuis le jeu => retour vitrine
 async function signOut() {
-  await client.auth.signOut();
-  alert("Déconnecté.");
-  location.reload();
+  try {
+    await client.auth.signOut();
+  } catch {}
+  location.replace(window.VITRINE_URL);
 }
 
 // 🔁 Affichage conditionnel formulaire

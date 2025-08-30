@@ -30,36 +30,6 @@
 
   <body>
     <!-- ========== CONNEXION & INSCRIPTION ========== -->
-    <div id="auth-box" class="auth-container">
-      <!-- Formulaire de connexion -->
-      <div id="login-form">
-        <h3>🔐 Connexion joueur</h3>
-        <input type="email" id="email" placeholder="Email" />
-        <input type="password" id="password" placeholder="Mot de passe" />
-        <button onclick="signIn()">Se connecter</button>
-        <p>
-          Pas encore inscrit ?
-          <a href="#" onclick="showSignUp()">Créer un compte</a>
-        </p>
-      </div>
-
-      <!-- Formulaire d'inscription -->
-      <div id="signup-form" class="hidden">
-        <h3>📝 Créer un compte</h3>
-        <input type="text" id="signup-pseudo" placeholder="Pseudo" />
-        <input type="email" id="signup-email" placeholder="Email" />
-        <input
-          type="password"
-          id="signup-password"
-          placeholder="Mot de passe"
-        />
-        <button onclick="signUp()">S'inscrire</button>
-        <p>
-          Déjà inscrit ?
-          <a href="#" onclick="showSignIn()">Connexion</a>
-        </p>
-      </div>
-    </div>
 
     <div id="loader-pois" class="loader-overlay hidden">
       <div class="loader-box">

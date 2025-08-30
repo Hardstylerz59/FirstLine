@@ -3,23 +3,20 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Services de Secours — Jeu de gestion</title>
+    <title>Services de Secours — Vitrine</title>
     <meta
       name="description"
-      content="Site vitrine du jeu de gestion de services de secours. Connectez-vous via Supabase et lancez le jeu dans un nouvel onglet."
+      content="Connectez-vous via Supabase et lancez le jeu dans un nouvel onglet."
     />
     <link rel="icon" href="../assets/icons/mission.png" />
     <link rel="stylesheet" href="./style.css" />
-    <!-- Supabase JS v2 (si ton jeu n'injecte pas déjà un client global) -->
+    <!-- Config partagée (même que côté jeu) -->
+    <script src="./authConfig.js"></script>
+    <!-- Supabase v2 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-      // 🔧 CONFIG À REMPLACER
-      window.SUPABASE_URL = "https://VOTRE-PROJET.supabase.co";
-      window.SUPABASE_ANON_KEY = "VOTRE-ANON-KEY";
-      // Chemin vers le jeu
+      // Chemin vers le jeu (depuis /vitrine/)
       window.GAME_RELATIVE_URL = "../game/index.html";
-      // URL de retour OAuth (revient ici par défaut)
-      window.OAUTH_REDIRECT_URL = window.location.href;
     </script>
   </head>
   <body>
@@ -37,7 +34,7 @@
         </a>
         <nav class="nav">
           <a href="#presentation">Présentation</a>
-          <a href="#connexion">Se connecter</a>
+          <a href="#compte">Compte</a>
           <button id="launchTop" class="btn btn-primary">Lancer le jeu</button>
         </nav>
       </div>
@@ -48,8 +45,8 @@
         <div class="wrap">
           <h1>Gérez vos interventions, sauvez des vies.</h1>
           <p class="lead">
-            Connectez-vous via Supabase puis lancez le jeu dans un nouvel
-            onglet. Votre session est partagée avec le jeu.
+            Authentifiez-vous ici, puis lancez le jeu dans un nouvel onglet. La
+            session Supabase est partagée.
           </p>
           <div class="cta-row">
             <button id="launchHero" class="btn btn-primary btn-lg">
@@ -69,19 +66,20 @@
 
       <section id="presentation" class="section">
         <div class="wrap">
-          <h2>Présentation du jeu</h2>
+          <h2>Présentation</h2>
           <p>
-            Jeu jouable dans le navigateur. Objectif :
-            <strong>planifier</strong>, <strong>déployer</strong> et
-            <strong>optimiser</strong> vos ressources pour répondre aux
-            missions.
+            Planifiez, déployez et optimisez vos ressources (FPT, VSAV, VSR,
+            SMUR, EPA…). Sauvegardes cloud via Supabase, reprise de partie
+            instantanée.
           </p>
-
           <div class="features">
             <article class="card">
               <img src="../assets/icons/caserne.png" alt="Caserne" />
-              <h3>Caserne & bâtiments</h3>
-              <p>Améliorez vos infrastructures pour augmenter vos capacités.</p>
+              <h3>Infrastructure</h3>
+              <p>
+                Construisez et améliorez vos casernes, hôpitaux et
+                commissariats.
+              </p>
             </article>
             <article class="card">
               <img src="../assets/icons/mission.png" alt="Missions" />
@@ -92,48 +90,33 @@
               </p>
             </article>
             <article class="card">
-              <img src="../assets/icons/vsr.png" alt="Véhicules" />
-              <h3>Flotte opérationnelle</h3>
-              <p>FPT, VSAV, VSR, SMUR, EPA… chaque engin a son rôle.</p>
-            </article>
-            <article class="card">
               <img src="../assets/weather/sun.png" alt="Météo" />
-              <h3>Météo & contexte</h3>
+              <h3>Contexte vivant</h3>
               <p>
-                La météo influence le rythme et la difficulté des interventions.
+                Météo et cycle jour/nuit influencent le rythme des
+                interventions.
               </p>
             </article>
           </div>
         </div>
       </section>
 
-      <section id="connexion" class="section section-alt">
+      <section id="compte" class="section section-alt">
         <div class="wrap auth-grid">
           <div class="auth-card">
-            <h2>Se connecter</h2>
+            <h2>Compte</h2>
             <p class="muted">
-              Authentification via Supabase. Aucune donnée sensible n’est
-              stockée coté vitrine, la session Supabase est utilisée par le jeu.
+              Connexion via Supabase. Les sauvegardes restent associées à votre
+              compte.
             </p>
 
             <form id="loginForm" class="form" autocomplete="on">
-              <label for="pseudo">Pseudonyme (stocké en meta user)</label>
-              <input
-                id="pseudo"
-                name="pseudo"
-                type="text"
-                placeholder="Votre pseudo"
-                minlength="2"
-                maxlength="24"
-              />
-
               <label for="email">Email</label>
               <input
                 id="email"
                 name="email"
                 type="email"
                 placeholder="vous@exemple.com"
-                inputmode="email"
                 required
               />
 
@@ -145,6 +128,16 @@
                 placeholder="••••••••"
                 minlength="6"
                 required
+              />
+
+              <label for="pseudo">Pseudo (à l’inscription)</label>
+              <input
+                id="pseudo"
+                name="pseudo"
+                type="text"
+                placeholder="Votre pseudo"
+                minlength="2"
+                maxlength="24"
               />
 
               <div class="row space-between align-center">
@@ -160,24 +153,6 @@
                   Lien magique
                 </button>
               </div>
-
-              <div class="oauth-row">
-                <button
-                  class="btn btn-ghost"
-                  type="button"
-                  data-provider="google"
-                >
-                  Google
-                </button>
-                <button
-                  class="btn btn-ghost"
-                  type="button"
-                  data-provider="github"
-                >
-                  GitHub
-                </button>
-              </div>
-
               <p
                 class="small muted"
                 id="authMsg"
@@ -192,7 +167,7 @@
               role="status"
               aria-live="polite"
             >
-              <div class="avatar" aria-hidden="true">👤</div>
+              <div class="avatar">👤</div>
               <div class="user-infos">
                 <p class="hello">
                   Connecté en tant que <strong id="userName"></strong>
@@ -212,25 +187,21 @@
 
           <div class="auth-side">
             <div class="tip">
-              <h3>Comment jouer ?</h3>
+              <h3>Comment ça marche ?</h3>
               <ol>
+                <li>Connectez-vous ici (ou inscrivez-vous).</li>
                 <li>
-                  Connectez-vous (email/mot de passe, OAuth ou lien magique).
+                  Cliquez <em>Lancer le jeu</em> : un nouvel onglet s’ouvre.
                 </li>
                 <li>
-                  Cliquez <em>Lancer le jeu</em> — nouveau onglet, session
-                  conservée.
-                </li>
-                <li>
-                  Le jeu lit votre session Supabase et votre pseudo (metadata).
+                  La déconnexion depuis le jeu vous ramène ici automatiquement.
                 </li>
               </ol>
             </div>
             <div class="screen-note">
               <p>
-                Le jeu s’ouvre depuis <code>../game/index.html</code>. Si vous
-                déplacez les dossiers, mettez à jour
-                <code>GAME_RELATIVE_URL</code>.
+                Le jeu s’ouvre via <code>../game/index.html</code> (même origine
+                = session partagée).
               </p>
             </div>
           </div>
@@ -240,10 +211,10 @@
 
     <footer class="site-footer">
       <div class="wrap row space-between">
-        <p>© <span id="year"></span> Services de Secours — Jeu de gestion.</p>
+        <p>© <span id="year"></span> Services de Secours</p>
         <div class="links">
           <a href="#presentation">Présentation</a>
-          <a href="#connexion">Connexion</a>
+          <a href="#compte">Compte</a>
           <button id="launchBottom" class="btn btn-primary btn-sm">
             Lancer le jeu
           </button>
