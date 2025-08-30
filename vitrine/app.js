@@ -5,10 +5,11 @@ const setText = (el, txt) => {
 };
 const show = (el) => el?.classList.remove("hidden");
 const hide = (el) => el?.classList.add("hidden");
-const openGame = (playerName) => {
-  const url = new URL(window.GAME_RELATIVE_URL, window.location.href);
-  if (playerName) url.searchParams.set("player", playerName);
-  window.open(url.toString(), "_blank", "noopener");
+
+// 👉 Ouvre juste /game/index.html (pas de ?player=…)
+const openGame = () => {
+  const href = window.GAME_RELATIVE_URL || "../game/index.html";
+  window.open(href, "_blank", "noopener");
 };
 
 // Supabase client (même projet que le jeu)
@@ -67,7 +68,7 @@ async function currentUser() {
   return user || null;
 }
 
-// Sign-in / Sign-up / Magic Link
+// Sign-in
 loginForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   setText(authMsg, "Connexion…");
@@ -88,6 +89,7 @@ loginForm?.addEventListener("submit", async (e) => {
   }
 });
 
+// Sign-up
 $("#btnSignUp")?.addEventListener("click", async () => {
   setText(authMsg, "Création du compte…");
   authMsg.style.color = "#334155";
@@ -112,6 +114,7 @@ $("#btnSignUp")?.addEventListener("click", async () => {
   }
 });
 
+// Magic link
 $("#btnMagic")?.addEventListener("click", async () => {
   setText(authMsg, "Envoi du lien magique…");
   authMsg.style.color = "#334155";
@@ -129,12 +132,13 @@ $("#btnMagic")?.addEventListener("click", async () => {
   }
 });
 
+// Déconnexion vitrine
 logoutBtn?.addEventListener("click", async () => {
   await sb.auth.signOut();
   displayUser(null);
 });
 
-// Lancer le jeu (partout)
+// Lancer le jeu (⚠️ sans pseudo)
 [launchTop, launchHero, launchBottom, playNowBtn].forEach((btn) => {
   btn?.addEventListener("click", async () => {
     const user = await currentUser();
@@ -143,15 +147,11 @@ logoutBtn?.addEventListener("click", async () => {
       authMsg.style.color = "#b91c1c";
       return;
     }
-    const pseudo =
-      user.user_metadata?.pseudo ||
-      user.user_metadata?.name ||
-      user.email?.split("@")[0];
-    openGame(pseudo);
+    openGame(); // ← pas de paramètre
   });
 });
 
-// État initial + écoute
+// État initial
 yearEl && (yearEl.textContent = new Date().getFullYear());
 sb.auth.onAuthStateChange((_e, session) => displayUser(session?.user || null));
 (async () => {

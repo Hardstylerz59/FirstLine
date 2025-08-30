@@ -101,7 +101,7 @@ async function updateWeatherUI(cityOverride = null) {
 
   const iconEl = document.getElementById("weather-icon");
   if (iconEl)
-    iconEl.src = `assets/weather/${iconMap[currentWeather] || "sun.png"}`;
+    iconEl.src = `../assets/weather/${iconMap[currentWeather] || "sun.png"}`;
 }
 
 // Cycle jour/nuit selon l’heure locale (ignorer les API)
@@ -114,7 +114,9 @@ function updateCycleUI() {
 
   const icon = document.getElementById("cycle-icon");
   if (icon)
-    icon.src = `assets/weather/${cycle === "nuit" ? "night.png" : "day.png"}`;
+    icon.src = `../assets/weather/${
+      cycle === "nuit" ? "night.png" : "day.png"
+    }`;
 }
 
 // Rafraîchir automatiquement le cycle toutes les minutes
@@ -428,7 +430,7 @@ async function createMission() {
   updatePendingBadgeAndHistory?.();
 
   const icon = L.icon({
-    iconUrl: "assets/icons/mission.png",
+    iconUrl: "../assets/icons/mission.png",
     iconSize: [28, 28],
     iconAnchor: [14, 28],
   });
@@ -975,7 +977,7 @@ function dispatchReinforcementsToMission(mission, vehiclesList) {
 
     function launchVehicleAnimation() {
       const icon = L.icon({
-        iconUrl: `assets/icons/${vehicle.type.toLowerCase()}.png`,
+        iconUrl: `../assets/icons/${vehicle.type.toLowerCase()}.png`,
         iconSize: [24, 24],
         iconAnchor: [12, 12],
       });
@@ -1203,7 +1205,7 @@ function dispatchMission(missionId) {
 
     function launchVehicleAnimation() {
       const icon = L.icon({
-        iconUrl: `assets/icons/${vehicle.type.toLowerCase()}.png`,
+        iconUrl: `../assets/icons/${vehicle.type.toLowerCase()}.png`,
         iconSize: [24, 24],
         iconAnchor: [12, 12],
       });
@@ -1397,7 +1399,7 @@ function dispatchVehicleToMission(vehicle, mission, building) {
   const endLL = toLatLng(mission.position, startLL);
 
   const icon = L.icon({
-    iconUrl: `assets/icons/${(vehicle.type || "").toLowerCase()}.png`,
+    iconUrl: `../assets/icons/${(vehicle.type || "").toLowerCase()}.png`,
     iconSize: [24, 24],
     iconAnchor: [12, 12],
   });
@@ -1487,7 +1489,7 @@ function returnVehicleToCaserne(vehicle, building) {
   vehicle.retourEnCours = true;
 
   const icon = L.icon({
-    iconUrl: `assets/icons/${vehicle.type.toLowerCase()}.png`,
+    iconUrl: `../assets/icons/${vehicle.type.toLowerCase()}.png`,
     iconSize: [24, 24],
     iconAnchor: [12, 12],
   });

@@ -137,7 +137,7 @@ function showNotification(type, message, duration = 4000) {
 
   // Optionnel : confetti si "level"
   if (type === "level") {
-    const audio = new Audio("assets/sounds/level.mp3");
+    const audio = new Audio("../assets/sounds/level.mp3");
     audio.volume = 0.7;
     audio.play();
     confetti({
@@ -973,7 +973,7 @@ document.getElementById("reveal-address-btn").addEventListener("click", () => {
   // Crée le marker s'il n'existe pas
   if (!currentCallMission.marker) {
     const icon = L.icon({
-      iconUrl: "assets/icons/mission.png",
+      iconUrl: "../assets/icons/mission.png",
       iconSize: [28, 28],
       iconAnchor: [14, 28],
     });

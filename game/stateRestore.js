@@ -151,7 +151,7 @@ async function rebuildBuildingsAndVehicles(
       // Marker véhicule si position connue et pas "dc"
       if (v.position && v.status !== "dc") {
         const icon = L.icon({
-          iconUrl: `assets/icons/${v.type.toLowerCase()}.png`,
+          iconUrl: `../assets/icons/${v.type.toLowerCase()}.png`,
           iconSize: [24, 24],
           iconAnchor: [12, 12],
         });
@@ -270,7 +270,7 @@ function restoreMissions(
     missionList.appendChild(li);
 
     const icon = L.icon({
-      iconUrl: "assets/icons/mission.png",
+      iconUrl: "../assets/icons/mission.png",
       iconSize: [28, 28],
       iconAnchor: [14, 28],
     });

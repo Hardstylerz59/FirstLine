@@ -263,7 +263,6 @@ async function updateAuthUI() {
   setTimeout(() => map.invalidateSize(), 300);
 
   if (data?.user) {
-    authBox.style.display = "none";
     gameUI.style.display = "block";
     const pseudo = data.user.user_metadata?.pseudo;
     loadGame(); // Chargement automatique

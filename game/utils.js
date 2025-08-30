@@ -1254,9 +1254,9 @@ function getSafeId(building) {
 
 function getIconForType(type) {
   const icons = {
-    caserne: "assets/icons/caserne.png",
-    hopital: "assets/icons/hopital.png",
-    police: "assets/icons/commissariat.png",
+    caserne: "../assets/icons/caserne.png",
+    hopital: "../assets/icons/hopital.png",
+    police: "../assets/icons/commissariat.png",
   };
   return icons[type] || icons.caserne;
 }
